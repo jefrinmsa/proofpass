@@ -85,6 +85,12 @@ For production-build testing, run `npm run build` after configuration, then `npm
 
 ## How it works
 
+### Protected Campus Library materials
+
+Campus Library displays its reading shelf after successful login. Its catalog and every file request require an unexpired `demo-b` session; a Student Lab session does not grant library access. PDFs can open in the browser or download; PowerPoint files download in their original format. Responses disable caching, and sign-out blocks subsequent file requests. Files already downloaded cannot be revoked.
+
+The supplied materials are stored locally in `apps/demo-b/.local/library/`, outside Next.js `public/` and excluded from Git. Their contents are **not published to the public GitHub repository**. On a fresh checkout or deployment, place the three original files in that directory: `jefrincn.pdf`, `SOFTWARE PROJECT MANAGEMENT AND PROCESS MODELS [Autosaved].pptx`, and `Agile_Operations_Management.pptx`. Run the app from its workspace as documented above. Without these files, the protected catalog reports unavailable. Share only material you are authorized to distribute.
+
 ```mermaid
 sequenceDiagram
  participant U as Browser + wallet
