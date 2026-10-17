@@ -1,8 +1,12 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { STUDENT_POLICY } from '@zk-auth/shared';
 export interface AssertionClaims {
   sub: string;
   wallet: string;
-  ageAbove18: true;
+  studentEnrolled: true;
+  credentialPolicy: string;
+  registryRoot: string;
+  accessUntil: number;
   environment: 'test';
   jti: string;
   exp: number;
@@ -25,8 +29,14 @@ export function createAssertionVerifier(options: {
     });
     if (
       payload.environment !== 'test' ||
-      payload.ageAbove18 !== true ||
-      payload.agePolicy !== 'completed-age-greater-than-18-at-qr-signing' ||
+      payload.studentEnrolled !== true ||
+      payload.credentialPolicy !== STUDENT_POLICY ||
+      typeof payload.registryRoot !== 'string' ||
+      !/^[1-9][0-9]{0,77}$/.test(payload.registryRoot) ||
+      typeof payload.accessUntil !== 'number' ||
+      !Number.isInteger(payload.accessUntil) ||
+      payload.accessUntil <= Date.now() / 1000 ||
+      payload.accessUntil > Date.now() / 1000 + 28800 ||
       typeof payload.wallet !== 'string' ||
       !/^0x[0-9a-fA-F]{40}$/.test(payload.wallet) ||
       typeof payload.sub !== 'string' ||
