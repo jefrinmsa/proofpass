@@ -1,31 +1,42 @@
-# Validation record
+# Student access validation
 
-Validated locally on Windows with Node 24.16.0, Anon Aadhaar core/contracts 2.4.3, v2.0.0 artifacts, Solidity 0.8.28, and Next.js 15.5.28.
+The active policy is college-authorized enrollment, verified issuance code and wallet, and an unexpired student credential. Age-only assertions and legacy sessions cannot authorize materials.
 
-## Real proof measurements
+Validated on Windows with Node 24.16.0, Circom 2.2 (circom2 0.2.23), circomlib 2.0.5, circomlibjs 0.1.7, snarkjs 0.7.6, Tesseract.js 7.0.0, Solidity 0.8.28 and Next.js 15.5.28.
 
-These measurements use the published circuit and proving key, with synthetic RSA-signed QR credentials. Timings cover local artifact loading, proving and verification in Node; they are not browser performance guarantees.
+## Measurements
 
-| Fixture             | Valid Groth16 proof | Age flag | Measured seconds | Authentication policy |
-| ------------------- | ------------------- | -------- | ---------------: | --------------------- |
-| Adult               | Yes                 | 1        |            30.30 | Accept                |
-| Underage            | Yes                 | 0        |            24.68 | Reject                |
-| Eighteenth birthday | Yes                 | 0        |            28.82 | Reject                |
-| Nineteenth birthday | Yes                 | 1        |            29.14 | Accept                |
+- A real student proof, including local artifact loading and verification, took **1.93 seconds** in Node on this machine. This is an observation, not a browser guarantee.
+- The circuit has 3,323 nonlinear and 3,382 linear constraints, five public inputs, two public outputs and nineteen private inputs (including paths).
+- The optional local contract demonstration consumed **265,387 gas** in the contract fixture test. Browser proof calldata can differ slightly in gas. This is not a currency fee or Sepolia estimate.
+- The latest complete Chrome student walkthrough took **18.2 seconds**, with test setup bringing total runner time to 23.1 seconds. Compilation/cache state affects timing.
 
-All four proofs were also passed to the Solidity verifier. Altered signal inputs were rejected. The optional local `demonstrate` transaction used 282,507 gas for the adult fixture and 282,483 for the nineteenth-birthday fixture. These are observed local EVM gas units, not Sepolia fee estimates. Wrapper deployment used 259,248 gas; its dependent verifier deployments are additional.
+## Coverage
 
-## Automated coverage
+The **23 passing unit/integration tests** include aggregate cases for:
 
-Final acceptance: **21 unit/integration tests, 10 contract tests, and the full Chrome browser walkthrough passed.** The latest browser walkthrough completed in approximately 2.3 minutes, including three real browser proofs, both application sessions, protected library downloads, an optional local transaction, underage rejection, logout isolation and a 390 px mobile layout check. API request inspection found no identity credential files or QR payloads in authentication requests. The final browser prover uses an isolated worker with parallelism capped at four; an earlier uncapped run timed out under memory pressure and is not counted as successful.
+- Active roster matching; unknown, expired and inactive enrollment; mismatched email/expiry; unauthorized origins; disabled delivery configuration.
+- Issuance code mismatch, five-attempt lockout, expiry, single-use consumption and wallet mismatch. No email is sent in these tests.
+- Application scope, wallet, root, access deadline and challenge signal; invalid proofs; verifier outages; expired challenges; replay and concurrent submission.
+- Roster expiry changes removing old credentials from the approved registry.
+- Signed JWT signature/audience/environment/student policy/access deadline; atomic assertion redemption; application-isolated HttpOnly sessions.
+- Protected material bytes/headers, missing/expired/wrong-application sessions, changed roots and unavailable registry checks.
+- Actual circuit constraint rejection for changed roll hash, expiry, wallet, secret, siblings, nonbinary directions and root. Authorized expiry equal to the public access deadline is accepted; one second below fails.
 
-- API/service tests use actual wallet signatures and an injected unit-test verifier to isolate challenge policy. They cover eligible/ineligible flags, expiry, replay, concurrent consumption, altered signals, wrong app seed/origin/network/wallet, extra disclosures, verifier failure and outage, request envelopes, and error redaction.
-- Assertion tests check signed JWTs, audience, expiry, environment and age claims.
-- Database integration runs the SQL schema on an embedded PostgreSQL engine and checks atomic challenge consumption, assertion redemption, HttpOnly session creation, app isolation and logout.
-- Library tests reject missing, forged, expired, wrong-application and revoked sessions; verify PDF bytes, download headers and cache controls; and reject non-catalog paths. The browser retrieves the supplied PDF and PowerPoint files after login and confirms that direct file requests fail before login and after logout. The document contents remain outside the public folder and Git history.
-- Contract tests exercise the actual published verifier, all four real proofs, malformed proofs, policy failures, and key mismatches.
-- Both Next.js production builds completed. The server build reports an upstream optional `web-worker` dynamic-dependency warning; browser snarkjs is explicitly resolved to its browser build.
+The **15 passing contract tests** include five student tests: actual proof acceptance, tampered public inputs/proof rejection, college-only root updates, wallet-bound demonstration transactions and revocation. Ten historical Aadhaar contract tests remain.
 
-The real proof outputs, local deployments and generated signing keys are ignored under `.local/` and `deployments/`. Public fixture data and certificates are included. Pinned public-artifact hashes are under `scripts/artifact-hashes.json`.
+The Chrome walkthrough covers local ID-photo OCR, test-mailbox issuance, credential download/reuse, fresh proofs for both applications, different subjects, cross-application assertion rejection, protected PDF/slide retrieval, optional transaction, registry mismatch and revocation, logout, unknown enrollment rejection and a 390px layout check.
 
-Sepolia deployment requires a supplied RPC URL and funded testnet key and has not been performed. This is an educational implementation, not a production audit.
+Inspected proof requests contain only challenge ID, wallet signature and proof. No ID image, roll, email, expiry or secret is sent in those requests. Initial enrollment verification intentionally sends roll, expiry and email to the college issuer, but no photo or secret.
+
+Service tests inject the verifier to isolate policy; they use real wallet signatures and PostgreSQL via PGlite. The unit adapter skips the production advisory lock because it has one connection. Circuit and contract tests use real proofs; browser issuance exercises the deployed local chain and database.
+
+## Limits
+
+Synthetic records, non-deliverable sample emails and a private filesystem mailbox simulate enrollment. Real email delivery and real college identity are not established. The updater uses an unlocked local Hardhat account; the student issuer refuses real networks.
+
+The custom circuit and single-machine educational ceremony are unaudited. The proving key passed snarkjs zkey verify against the circuit and ceremony. Source, generated verifier and public artifact hashes are committed. Keys, witnesses, private credentials, codes, database contents and supplied course documents are ignored. Regenerating the setup requires redeploying the matching verifier.
+
+PostgreSQL and blockchain updates cannot be atomic together. Root mismatch denies access and requires administrator resynchronization. Registry changes invalidate all old-root sessions. Cards must remain valid for the full eight-hour access window. Already downloaded files cannot be revoked.
+
+Sepolia student deployment and SMTP delivery have not been performed. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
