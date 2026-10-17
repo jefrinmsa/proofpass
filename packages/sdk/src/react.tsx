@@ -5,6 +5,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { ZkAuthClient, type AuthProof, type Challenge } from './index';
 import { proofSchema, AGE_POLICY } from '@zk-auth/shared';
 import jsQR from 'jsqr';
+export { StudentAuthButton } from './student-react';
 export function ZkAuthButton({
   apiUrl,
   appId,
