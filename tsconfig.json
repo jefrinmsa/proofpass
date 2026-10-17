@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsx": "preserve",
+    "noEmit": true,
+    "paths": {
+      "@zk-auth/shared": ["./packages/shared/src/index.ts"],
+      "@zk-auth/sdk": ["./packages/sdk/src/index.ts"],
+      "@zk-auth/sdk/react": ["./packages/sdk/src/react.tsx"],
+      "@zk-auth/sdk/server": ["./packages/sdk/src/server.ts"]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["node_modules", "**/.next", "**/dist"]
+}
