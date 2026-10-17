@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 300000,
   expect: { timeout: 15000 },
   use: {
+    baseURL: 'http://localhost:3001',
     actionTimeout: 15000,
     channel: 'chrome',
     headless: true,
