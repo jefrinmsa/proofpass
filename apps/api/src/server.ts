@@ -4,7 +4,8 @@ import rateLimit from '@fastify/rate-limit';
 import { z, ZodError } from 'zod';
 import { address, proofSchema } from '@zk-auth/shared';
 import { AuthError, createService, type Dependencies } from './service';
-export async function buildServer(d: Dependencies, jwks: object) {
+import { registerStudentRoutes, type StudentDependencies } from './student';
+export async function buildServer(d: Dependencies, jwks: object, student?: StudentDependencies) {
   const server = Fastify({ logger: false, bodyLimit: 16384 });
   await server.register(cors, {
     origin: true,
@@ -13,6 +14,7 @@ export async function buildServer(d: Dependencies, jwks: object) {
   });
   await server.register(rateLimit, { max: 30, timeWindow: '1 minute' });
   const service = createService(d);
+  if (student) registerStudentRoutes(server, student);
   server.addHook('onSend', async (_req, reply) => {
     reply.header('Cache-Control', 'no-store');
     reply.header('X-Content-Type-Options', 'nosniff');
