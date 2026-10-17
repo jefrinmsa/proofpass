@@ -2,14 +2,14 @@
 
 Explain it as: “The college first checks that I am enrolled and can receive a code at my registered email. My browser then proves I hold a valid college-approved credential, without sending my roll number or ID photo to the library.”
 
-The test mailbox is a simulation: it does not send real email.
+The default local test mailbox simulates delivery. To send real codes, configure Gmail SMTP and register a real recipient in the local roster using the README's real email instructions. Never commit the recipient's address or app password in fixture files.
 
 ## Show the flow
 
 1. Open Student Lab on port 3000 and connect a wallet on chain 31337.
 2. Download/select the sample ID image. Watch local OCR fill roll CSE2026001 and expiry 2027-06-30. Explain that OCR can be corrected and is not trusted evidence.
-3. Enter student1@students.example.test and request a code.
-4. Read the private local test mailbox using npm run student:mail -- REQUEST_ID. Enter the code and sign issuance.
+3. Enter the address registered for the sample student and request a code. In default test mode this is student1@students.example.test; SMTP mode requires a real registered address.
+4. In SMTP mode read the code from the registered inbox or Spam folder. In local-test mode use npm run student:mail -- REQUEST_ID. Enter the code and sign issuance.
 5. Save the private credential. Explain that its secret never goes to the issuer or library.
 6. Generate a real proof, sign the login challenge, and verify it. The backend calls the local Solidity verifier without a login transaction.
 7. Open Campus Library on port 3001. It has no session yet. Load the saved credential, generate a fresh proof, and sign in. The application subject is different.
