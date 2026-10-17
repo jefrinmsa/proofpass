@@ -13,8 +13,10 @@ describe('application assertions', () => {
     });
     const base = {
       wallet: '0x' + '11'.repeat(20),
-      ageAbove18: true,
-      agePolicy: 'completed-age-greater-than-18-at-qr-signing',
+      studentEnrolled: true,
+      credentialPolicy: 'active-enrollment-unexpired-card-email-wallet-v1',
+      registryRoot: '123',
+      accessUntil: Math.floor(Date.now() / 1000) + 28000,
       environment: 'test',
     };
     const token = (claims: object = {}, aud = 'demo-a', expires = '5m') =>
@@ -30,7 +32,9 @@ describe('application assertions', () => {
     expect((await verify(await token())).sub).toBe('app-specific-subject');
     await expect(verify(await token({}, 'demo-b'))).rejects.toThrow();
     await expect(verify(await token({ environment: 'production' }))).rejects.toThrow();
-    await expect(verify(await token({ ageAbove18: false }))).rejects.toThrow();
+    await expect(verify(await token({ studentEnrolled: false }))).rejects.toThrow();
+    await expect(verify(await token({ credentialPolicy: 'aadhaar-age' }))).rejects.toThrow();
+    await expect(verify(await token({ accessUntil: 0 }))).rejects.toThrow();
     await expect(verify(await token({}, 'demo-a', '-1s'))).rejects.toThrow();
   });
 });
