@@ -6,8 +6,6 @@ import {
   createHash,
   timingSafeEqual,
 } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import type pg from 'pg';
 import type { FastifyInstance } from 'fastify';
 import { verifyMessage, type Address } from 'viem';
@@ -25,6 +23,7 @@ import {
 import { studentCrypto } from '../../../packages/shared/src/student-crypto';
 import { PgStore } from './store';
 import { AuthError } from './service';
+import { localTestMailer, type StudentMailer } from './mail';
 
 export interface StudentDependencies {
   db: pg.Pool;
@@ -35,11 +34,13 @@ export interface StudentDependencies {
   verifyProof(proof: StudentProof): Promise<boolean>;
   signAssertion(claims: Record<string, unknown>): Promise<string>;
   mailDirectory?: string;
+  mailer?: StudentMailer;
   now?: () => number;
 }
 export function studentService(d: StudentDependencies) {
   const now = d.now ?? Date.now;
   const store = new PgStore(d.db);
+  const mailer = d.mailer ?? (d.mailDirectory ? localTestMailer(d.mailDirectory) : undefined);
   const pepper = randomBytes(32);
   const codeHash = (id: string, code: string) =>
     createHmac('sha256', pepper).update(`${id}:${code}`).digest('hex');
@@ -63,6 +64,12 @@ export function studentService(d: StudentDependencies) {
     return app;
   }
   return {
+    async config() {
+      return {
+        emailMode: mailer?.mode ?? 'disabled',
+        emailConfigured: (await mailer?.configured()) ?? false,
+      };
+    },
     registry: current,
     async request(
       b: {
@@ -76,7 +83,8 @@ export function studentService(d: StudentDependencies) {
       origin: string,
     ) {
       await allowed(b.appId, origin);
-      if (!d.mailDirectory) throw new AuthError('EMAIL_SERVICE_NOT_CONFIGURED', 503);
+      if (!mailer || !(await mailer.configured()))
+        throw new AuthError('EMAIL_SERVICE_NOT_CONFIGURED', 503);
       const e = (await d.db.query('SELECT * FROM student_enrollments WHERE roll=$1', [b.roll]))
         .rows[0];
       if (
@@ -86,35 +94,54 @@ export function studentService(d: StudentDependencies) {
         b.expiry * 1000 <= now()
       )
         throw new AuthError('ENROLLMENT_NOT_VERIFIED', 403);
-      // This implementation intentionally cannot deliver real email.
-      if (!b.email.endsWith('@students.example.test'))
+      if (mailer.mode === 'local-test' && !b.email.endsWith('@students.example.test'))
         throw new AuthError('TEST_EMAIL_REQUIRED', 403);
+      if (mailer.mode === 'smtp' && b.email.endsWith('.test'))
+        throw new AuthError('REAL_EMAIL_REQUIRED', 403);
       const id = randomUUID();
       const code = String(randomInt(100000, 1000000));
       const expiresAt = new Date(now() + 600000).toISOString();
       const payload = { ...b, origin, expiresAt, nonce: randomBytes(32).toString('hex') };
       const message =
         'ProofPass student credential issuance v1\n' + JSON.stringify({ id, ...payload });
-      await d.db.query(
-        'INSERT INTO student_email_challenges(id,payload,code_hash,expires_at) VALUES($1,$2,$3,$4)',
-        [id, { ...payload, message }, codeHash(id, code), expiresAt],
-      );
-      await mkdir(d.mailDirectory, { recursive: true });
-      await writeFile(
-        path.join(d.mailDirectory, `${id}.json`),
-        JSON.stringify(
-          { to: b.email, code, expiresAt, notice: 'LOCAL TEST MAILBOX — no email was sent' },
-          null,
-          2,
-        ),
-        { mode: 0o600 },
-      );
+      const conn = await d.db.connect();
+      try {
+        await conn.query('BEGIN');
+        await conn.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+          `student-email:${b.email}`,
+        ]);
+        const recent = await conn.query(
+          "SELECT count(*)::int AS count FROM student_email_challenges WHERE payload->>'email'=$1 AND expires_at>NOW()-INTERVAL '5 minutes'",
+          [b.email],
+        );
+        if (recent.rows[0].count >= 5) throw new AuthError('EMAIL_RATE_LIMITED', 429);
+        await conn.query(
+          'INSERT INTO student_email_challenges(id,payload,code_hash,expires_at) VALUES($1,$2,$3,$4)',
+          [id, { ...payload, message }, codeHash(id, code), expiresAt],
+        );
+        await conn.query('COMMIT');
+      } catch (e) {
+        await conn.query('ROLLBACK');
+        throw e;
+      } finally {
+        conn.release();
+      }
+      try {
+        await mailer.send({ id, to: e.email, code, expiresAt });
+      } catch {
+        // A failed or ambiguous send must not leave a usable issuance request.
+        await d.db.query('UPDATE student_email_challenges SET consumed_at=NOW() WHERE id=$1', [id]);
+        throw new AuthError('EMAIL_DELIVERY_FAILED', 503);
+      }
       return {
         id,
         message,
         expiresAt,
-        emailMode: 'local-test',
-        notice: 'No email sent. Read this request’s code using the student:mail administrator CLI.',
+        emailMode: mailer.mode,
+        notice:
+          mailer.mode === 'smtp'
+            ? 'Code submitted to your registered email. Check Inbox and Spam.'
+            : 'No email sent. Read this request’s code using the student:mail administrator CLI.',
       };
     },
     async issue(id: string, code: string, signature: `0x${string}`, origin: string) {
@@ -258,6 +285,7 @@ export function registerStudentRoutes(server: FastifyInstance, d: StudentDepende
     .regex(/^0x[0-9a-fA-F]+$/)
     .max(2048);
   const app = z.string().min(1).max(64);
+  server.get('/v1/student/config', () => s.config());
   server.get('/v1/student/registry', () => s.registry());
   server.post(
     '/v1/student/enrollment/request',
