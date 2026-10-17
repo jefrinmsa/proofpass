@@ -1,0 +1,22 @@
+{
+  "worker.min.js": "576b7df7e3393e137e51849357c9adb53fe7ac1bb69bfa06cf3d61520f182c6d",
+  "eng.traineddata.gz": "ed350f3752f81ee8f38769edc14d92d997dababe23b565c59879372cc46a2468",
+  "tesseract-core-lstm.js": "6510efc4e8b45c5465df30679b9911ffe0071cd2ee982fa064e6f5136ef2de85",
+  "tesseract-core-lstm.wasm": "66b17df6e20c5329a17ffa9c202a47eaa3e32500b253d4c7f38e7f2bc01457c3",
+  "tesseract-core-lstm.wasm.js": "eef5f8b2f8e20e150680b20adaec4a60babafee3adbe8a94583c81fee46e8680",
+  "tesseract-core-relaxedsimd-lstm.js": "a37ac78b707e8d5d3d2e532cc3c4e69b04d127ea44a608f1e7de17640402aa5c",
+  "tesseract-core-relaxedsimd-lstm.wasm": "7985c92d4c64e7267d24cadffe1b2a1da6bf8aa55fdcaf953fe94fe122a24545",
+  "tesseract-core-relaxedsimd-lstm.wasm.js": "861a536cf9ef8e63cb644d57bab39c388f37f7d6b6f60024b741c5f6b39a59b3",
+  "tesseract-core-relaxedsimd.js": "716be037611f21b568347421f582f1e1a6456b6d5c3a7c2406c8a2a6c0136427",
+  "tesseract-core-relaxedsimd.wasm": "45f8c9b516df326b6ae6b493ed3a6289df5cbd10490e7b6ff8bf5b12ea42d1da",
+  "tesseract-core-relaxedsimd.wasm.js": "843074aa5bad1cc6421b74a86201768ced9f244795e4d81435435a61a40ce535",
+  "tesseract-core-simd-lstm.js": "e48e2f02ddae3716c8dd24bf41cd290d4efa96892d689cdc4013c2545d63f469",
+  "tesseract-core-simd-lstm.wasm": "34e8d50cac216427d86bf397d610fdd9f49492539bbcdfbfccc4eda20c810bea",
+  "tesseract-core-simd-lstm.wasm.js": "c58b46a4c796c0b8afccf77591d5b875b6896b45d402bbce8caa6f5362447b38",
+  "tesseract-core-simd.js": "da428fd7989ba749855ea16718a83b23e7ce04016fe31866ad2735813efc7133",
+  "tesseract-core-simd.wasm": "7d237a13edfeb0fa2f104744fccde0a00e0c076c3e23b7a8fc7af75ec9af2c3e",
+  "tesseract-core-simd.wasm.js": "6b61ef4e911b5cf57e656bbfe983d6e2b3711a02dd164154ddda064566e8e09d",
+  "tesseract-core.js": "a824c1b99a19e122d87e4467fe16aabb56c495d6cc9a08bc58cb8a7342636b43",
+  "tesseract-core.wasm": "c7f5ace62ac0ad065e71e9c6725f1d7cdf82e7eda8fba532cbb9563964da7098",
+  "tesseract-core.wasm.js": "0bc6ce3e5fbbd0cd89706cf2fd70960e3372f4f01ee24265b26990808aaeb286"
+}
