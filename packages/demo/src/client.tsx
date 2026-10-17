@@ -13,14 +13,14 @@ import {
 } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { hardhat, sepolia } from 'wagmi/chains';
-import { ZkAuthButton } from '@zk-auth/sdk/react';
+import { StudentAuthButton } from '@zk-auth/sdk/react';
 import { Library } from './library';
 import {
   EDUCATIONAL_NOTICE,
-  authAbi,
-  proofArgs,
-  type AuthProof,
-  type Challenge,
+  studentAbi,
+  studentProofArgs,
+  type StudentProof,
+  type StudentChallenge,
 } from '@zk-auth/shared';
 const config = createConfig({
   chains: [hardhat, sepolia],
@@ -44,11 +44,12 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
   const [user, setUser] = useState<{ sub: string; wallet: string } | null>(null);
-  const [proof, setProof] = useState<{ p: AuthProof; c: Challenge }>();
+  const [proof, setProof] = useState<{ p: StudentProof; c: StudentChallenge }>();
   const [transaction, setTransaction] = useState('');
   const [error, setError] = useState('');
   async function refresh() {
     const r = await fetch('/api/session', { cache: 'no-store' });
+    if (!r.ok) throw new Error('SESSION_UNAVAILABLE');
     const data = await r.json();
     setUser(data.user ?? null);
   }
@@ -72,9 +73,9 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
     try {
       const hash = await writeContractAsync({
         address: proof.c.verifier,
-        abi: authAbi,
+        abi: studentAbi,
         functionName: 'demonstrate',
-        args: proofArgs(proof.p),
+        args: studentProofArgs(proof.p),
         chainId: proof.c.chainId,
       });
       setTransaction(hash);
@@ -106,7 +107,8 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
       <div className="demo-notice">
         <span aria-hidden="true">i</span>
         <span>
-          <span>{EDUCATIONAL_NOTICE}</span>. Use the supplied QR files.
+          <span>{EDUCATIONAL_NOTICE}</span>. Sample enrollment records and a local test mailbox; no
+          real email is sent.
         </span>
       </div>
       <div className="workspace">
@@ -116,7 +118,7 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
           <p>
             {appId === 'demo-b' && user
               ? 'Your course materials are ready to read and download.'
-              : `Use a wallet and a test credential to sign in to ${title}.`}
+              : `Verify your student enrollment to access ${title}.`}
           </p>
         </div>
         {appId === 'demo-b' && user && <Library authenticated />}
@@ -165,7 +167,8 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
               </p>
             )}
             <div hidden={!!user}>
-              <ZkAuthButton
+              <StudentAuthButton
+                key={`${address}:${chainId}`}
                 appId={appId}
                 apiUrl={process.env.NEXT_PUBLIC_AUTH_API ?? 'http://localhost:4000'}
                 onAuthenticated={authenticated}
@@ -178,7 +181,10 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
                   ✓
                 </span>
                 <strong>Access granted to {title}</strong>
-                <p>Your credential proof was accepted. This session lasts up to eight hours.</p>
+                <p>
+                  Your student proof was accepted. This session lasts up to eight hours. Registry
+                  updates require a new login.
+                </p>
                 <dl>
                   <div>
                     <dt>Application subject</dt>
@@ -213,17 +219,24 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
             <p className="section-label">Before you begin</p>
             <h2>What gets verified</h2>
             <p>
-              The application checks a few facts without receiving your credential's personal
-              details.
+              The college service verifies enrollment first. The application then checks a private
+              membership proof.
             </p>
             <dl className="requirements">
               <div>
                 <dt>Credential</dt>
-                <dd>A synthetic QR signed with the accepted test key.</dd>
+                <dd>A college-authorized credential in the current enrollment registry.</dd>
               </div>
               <div>
-                <dt>Age requirement</dt>
-                <dd>Completed age greater than 18 (19+), at the QR signing date.</dd>
+                <dt>Enrollment and card</dt>
+                <dd>An active sample enrollment and a card valid for at least eight more hours.</dd>
+              </div>
+              <div>
+                <dt>College email</dt>
+                <dd>
+                  A one-time code sent to the registered address. This demo uses a local test
+                  mailbox.
+                </dd>
               </div>
               <div>
                 <dt>Wallet</dt>
@@ -233,15 +246,17 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
             <div className="privacy-note">
               <h3>What stays private</h3>
               <p>
-                Name, date of birth, address, photograph, and Aadhaar number. Your wallet address
-                and proof inputs remain visible.
+                The photo stays on your device. The library does not receive your roll number,
+                email, card expiry, or credential secret. The college issuer sees enrollment
+                details; your wallet and proof inputs are visible.
               </p>
             </div>
             <details className="scope-note">
               <summary>What this demo does not establish</summary>
               <p>
-                It does not verify college enrollment, citizenship, rightful credential ownership,
-                or universal person uniqueness.
+                Sample records do not establish real college enrollment. OCR is only a convenience;
+                the registered email check authorizes issuance. This does not prove a photo is
+                genuine or establish biometric identity.
               </p>
             </details>
             <a
