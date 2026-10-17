@@ -12,3 +12,5 @@ coverage/
 deployments/*.json
 !deployments/.gitkeep
 apps/*/public/zk/
+apps/*/public/ocr/
+apps/*/public/student-card.png
