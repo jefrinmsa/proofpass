@@ -15,7 +15,6 @@ import { injected } from 'wagmi/connectors';
 import { hardhat, sepolia } from 'wagmi/chains';
 import { ZkAuthButton } from '@zk-auth/sdk/react';
 import {
-  AGE_POLICY,
   EDUCATIONAL_NOTICE,
   authAbi,
   proofArgs,
@@ -85,138 +84,212 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
     }
   }
   return (
-    <main style={{ '--accent': accent } as React.CSSProperties}>
-      <header>
-        <a className="brand" href="/">
-          ◈ ProofPass <span>{appId}</span>
+    <main>
+      <header className="site-header">
+        <a className="brand" href="/" aria-label="ProofPass home">
+          <span className="brand-mark" aria-hidden="true">
+            P
+          </span>
+          ProofPass
         </a>
-        <span className="badge">{EDUCATIONAL_NOTICE}</span>
+        <nav aria-label="Applications">
+          <a href="http://localhost:3000" aria-current={appId === 'demo-a' ? 'page' : undefined}>
+            Student Lab
+          </a>
+          <a href="http://localhost:3001" aria-current={appId === 'demo-b' ? 'page' : undefined}>
+            Campus Library
+          </a>
+        </nav>
+        <span className="environment">College demonstration</span>
       </header>
-      <div className="hero">
-        <span className="eyebrow">PRIVATE CREDENTIALS. VERIFIABLE ACCESS.</span>
-        <h1>
-          Your identity.
-          <br />
-          <em>Your control.</em>
-        </h1>
-        <p>
-          Enter {title} with a wallet and a zero-knowledge credential proof. Your document stays on
-          your device.
-        </p>
+      <div className="demo-notice">
+        <span aria-hidden="true">i</span>
+        <span>
+          <span>{EDUCATIONAL_NOTICE}</span>. Use the supplied QR files.
+        </span>
       </div>
-      <div className="grid">
-        <section className="card">
-          <div className="card-title">
-            <span className="step">01</span>
-            <h2>Authenticate</h2>
-            <span className="pill">{user ? 'Signed in' : 'Ready to connect'}</span>
-          </div>
-          {isConnected ? (
-            <div className="wallet">
-              <span>
-                Wallet {address?.slice(0, 8)}…{address?.slice(-6)}
+      <div className="workspace">
+        <div className="page-heading">
+          <p className="section-label">{title} / Access verification</p>
+          <h1>Verify access</h1>
+          <p>Use a wallet and a test credential to sign in to {title}.</p>
+        </div>
+        <div className="workspace-grid">
+          <section className="verification-panel" aria-labelledby="verification-title">
+            <div className="panel-heading">
+              <h2 id="verification-title">{user ? 'Your session' : 'Access request'}</h2>
+              <span className={user ? 'state-label connected' : 'state-label'}>
+                <span aria-hidden="true" />
+                {user ? 'Signed in' : isConnected ? 'Wallet connected' : 'Not connected'}
               </span>
-              <button className="quiet" onClick={() => disconnect()}>
-                Disconnect
-              </button>
             </div>
-          ) : (
-            <button onClick={() => connect({ connector: connectors[0] })}>
-              Connect browser wallet
-            </button>
-          )}
-          {walletError && (
-            <p role="alert">
-              Wallet connection was not completed. Open this app in a browser with a wallet
-              extension and check the selected test network.
+            <div className="connection-row">
+              <div>
+                <span className="field-caption">Connected wallet</span>
+                {isConnected ? (
+                  <div className="wallet">
+                    <code>
+                      {address?.slice(0, 8)}…{address?.slice(-6)}
+                    </code>
+                    <span className="network-label">
+                      {chainId === 31337
+                        ? 'ProofPass Local'
+                        : chainId === 11155111
+                          ? 'Sepolia'
+                          : 'Select a test network'}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="connection-hint">Connect a browser wallet to begin.</p>
+                )}
+              </div>
+              {isConnected ? (
+                <button className="quiet" onClick={() => disconnect()}>
+                  Disconnect
+                </button>
+              ) : (
+                <button onClick={() => connect({ connector: connectors[0] })}>
+                  Connect browser wallet
+                </button>
+              )}
+            </div>
+            {walletError && (
+              <p className="inline-error" role="alert">
+                Wallet connection was not completed. Check your browser wallet and selected network.
+              </p>
+            )}
+            <div hidden={!!user}>
+              <ZkAuthButton
+                appId={appId}
+                apiUrl={process.env.NEXT_PUBLIC_AUTH_API ?? 'http://localhost:4000'}
+                onAuthenticated={authenticated}
+                onProof={(p, c) => setProof({ p, c })}
+              />
+            </div>
+            {user && (
+              <div className="success">
+                <span className="result-mark" aria-hidden="true">
+                  ✓
+                </span>
+                <strong>Access granted to {title}</strong>
+                <p>Your credential proof was accepted. This session lasts up to eight hours.</p>
+                <dl>
+                  <div>
+                    <dt>Application subject</dt>
+                    <dd>
+                      <code>{user.sub}</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Session wallet</dt>
+                    <dd>
+                      <code>{user.wallet}</code>
+                    </dd>
+                  </div>
+                </dl>
+                <button
+                  className="quiet"
+                  onClick={async () => {
+                    await fetch('/api/session', { method: 'DELETE' });
+                    setUser(null);
+                    setProof(undefined);
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+            <div className="panel-footnote">
+              Your credential is read on this device. The file is not uploaded.
+            </div>
+          </section>
+          <aside className="verification-notes">
+            <p className="section-label">Before you begin</p>
+            <h2>What gets verified</h2>
+            <p>
+              The application checks a few facts without receiving your credential's personal
+              details.
+            </p>
+            <dl className="requirements">
+              <div>
+                <dt>Credential</dt>
+                <dd>A synthetic QR signed with the accepted test key.</dd>
+              </div>
+              <div>
+                <dt>Age requirement</dt>
+                <dd>Completed age greater than 18 (19+), at the QR signing date.</dd>
+              </div>
+              <div>
+                <dt>Wallet</dt>
+                <dd>A signature confirming control of your connected address.</dd>
+              </div>
+            </dl>
+            <div className="privacy-note">
+              <h3>What stays private</h3>
+              <p>
+                Name, date of birth, address, photograph, and Aadhaar number. Your wallet address
+                and proof inputs remain visible.
+              </p>
+            </div>
+            <details className="scope-note">
+              <summary>What this demo does not establish</summary>
+              <p>
+                It does not verify college enrollment, citizenship, rightful credential ownership,
+                or universal person uniqueness.
+              </p>
+            </details>
+            <a
+              className="text-link"
+              href={appId === 'demo-a' ? 'http://localhost:3001' : 'http://localhost:3000'}
+            >
+              Try {appId === 'demo-a' ? 'Campus Library' : 'Student Lab'}{' '}
+              <span aria-hidden="true">↗</span>
+            </a>
+            <p className="small-note">Each application has a separate identifier and session.</p>
+          </aside>
+        </div>
+        <section className="transaction" aria-labelledby="transaction-title">
+          <div>
+            <p className="section-label">Optional / After verification</p>
+            <h2 id="transaction-title">Record a proof on the local chain.</h2>
+            <p>
+              Normal login has no transaction fee. Publishing a demonstration requires test ETH and
+              makes the proof inputs public, linked to your wallet.
+            </p>
+          </div>
+          <button
+            className="quiet"
+            disabled={!proof || chainId !== proof.c.chainId}
+            onClick={publish}
+          >
+            Publish proof demonstration
+          </button>
+          {transaction && (
+            <p className="transaction-result">
+              <code>{transaction}</code>
+              {proof?.c.chainId === 11155111 && (
+                <a
+                  href={'https://sepolia.etherscan.io/tx/' + transaction.split(' ')[0]}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View on explorer ↗
+                </a>
+              )}
             </p>
           )}
-          <ZkAuthButton
-            appId={appId}
-            apiUrl={process.env.NEXT_PUBLIC_AUTH_API ?? 'http://localhost:4000'}
-            onAuthenticated={authenticated}
-            onProof={(p, c) => setProof({ p, c })}
-          />
-          {user && (
-            <div className="success">
-              <strong>Access granted to {title}</strong>
-              <p>
-                Application subject: <code>{user.sub}</code>
-              </p>
-              <p>
-                Session wallet: <code>{user.wallet}</code>
-              </p>
-              <button
-                className="quiet"
-                onClick={async () => {
-                  await fetch('/api/session', { method: 'DELETE' });
-                  setUser(null);
-                  setProof(undefined);
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
         </section>
-        <aside className="card">
-          <span className="eyebrow">WHAT IS PROVEN</span>
-          <h2>
-            Reveal less.
-            <br />
-            Verify what matters.
-          </h2>
-          <ul className="claims">
-            <li>✓ Valid synthetic signed credential</li>
-            <li>✓ {AGE_POLICY}</li>
-            <li>✓ Control of the connected wallet</li>
-          </ul>
-          <p>
-            Name, date of birth, address, photograph, and Aadhaar number are not sent to the
-            authentication API.
-          </p>
-          <p className="muted">
-            Credential possession does not establish rightful ownership. This demo does not prove
-            citizenship or universal person uniqueness.
-          </p>
-          <a
-            className="text-link"
-            href={appId === 'demo-a' ? 'http://localhost:3001' : 'http://localhost:3000'}
-          >
-            Open {appId === 'demo-a' ? 'Campus Library' : 'Student Lab'} ↗
-          </a>
-          <p className="muted">Each application has its own subject identifier and session.</p>
-        </aside>
-      </div>
-      <section className="card transaction">
-        <h2>Optional blockchain transaction</h2>
-        <p>
-          Login uses a contract read call and needs no gas. Publishing this demonstration sends the
-          proof and public inputs to the blockchain, where they become public and linkable to your
-          wallet.
-        </p>
-        <button disabled={!proof || chainId !== proof.c.chainId} onClick={publish}>
-          Publish proof demonstration
-        </button>
-        {transaction && (
-          <p>
-            <code>{transaction}</code>
-            {proof?.c.chainId === 11155111 && (
-              <a
-                href={`https://sepolia.etherscan.io/tx/${transaction.split(' ')[0]}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {' '}
-                View on explorer ↗
-              </a>
-            )}
+        {error && (
+          <p className="inline-error" role="alert">
+            {error}
           </p>
         )}
-      </section>
-      {error && <p role="alert">{error}</p>}
+      </div>
       <footer>
-        ProofPass · College project · Anon Aadhaar + EVM verification · Test credentials only
+        <span>
+          ProofPass <span aria-hidden="true">/</span> {title}
+        </span>
+        <span>Zero-knowledge authentication · Test credentials only</span>
       </footer>
     </main>
   );
