@@ -178,4 +178,42 @@ test('two applications perform real browser proofs and keep sessions isolated', 
     true,
   );
   expect(errors).toEqual([]);
+  // Exercise SMTP-specific messages without sending any real email.
+  await page.route('**/v1/student/config', (route) =>
+    route.fulfill({ json: { emailMode: 'smtp', emailConfigured: true } }),
+  );
+  await page.route('**/v1/student/enrollment/request', (route) =>
+    route.fulfill({ status: 503, json: { error: { code: 'EMAIL_DELIVERY_FAILED' } } }),
+  );
+  await page.reload();
+  if (await page.getByRole('button', { name: 'Connect browser wallet' }).isVisible())
+    await page.getByRole('button', { name: 'Connect browser wallet' }).click();
+  await expect(page.getByLabel('Roll number', { exact: true })).toBeEnabled();
+  await page.getByLabel('Roll number', { exact: true }).fill('CSE2026001');
+  await page.getByLabel('Card expiry date').fill('2027-06-30');
+  await page.getByLabel('Registered college email').fill('registered@example.com');
+  await page.getByRole('button', { name: 'Request verification code' }).click();
+  await expect(page.getByRole('status')).toContainText('EMAIL_DELIVERY_FAILED');
+  await expect(page.getByLabel('Email verification code', { exact: true })).toHaveCount(0);
+  await page.unroute('**/v1/student/enrollment/request');
+  await page.route('**/v1/student/enrollment/request', (route) =>
+    route.fulfill({
+      json: {
+        id: '00000000-0000-0000-0000-000000000001',
+        message: 'SMTP UI fixture only',
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+        emailMode: 'smtp',
+      },
+    }),
+  );
+  await page.getByRole('button', { name: 'Request verification code' }).click();
+  await expect(
+    page.getByText(
+      'Check your registered email inbox and Spam folder. The code expires in 10 minutes.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel('Email verification code', { exact: true })).toBeVisible();
+  await page.screenshot({ path: '.local/smtp-code-instructions.png', fullPage: true });
+  expect(errors).toEqual([]);
 });
