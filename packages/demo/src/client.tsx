@@ -14,6 +14,7 @@ import {
 import { injected } from 'wagmi/connectors';
 import { hardhat, sepolia } from 'wagmi/chains';
 import { ZkAuthButton } from '@zk-auth/sdk/react';
+import { Library } from './library';
 import {
   EDUCATIONAL_NOTICE,
   authAbi,
@@ -111,9 +112,14 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
       <div className="workspace">
         <div className="page-heading">
           <p className="section-label">{title} / Access verification</p>
-          <h1>Verify access</h1>
-          <p>Use a wallet and a test credential to sign in to {title}.</p>
+          <h1>{appId === 'demo-b' && user ? 'Campus Library' : 'Verify access'}</h1>
+          <p>
+            {appId === 'demo-b' && user
+              ? 'Your course materials are ready to read and download.'
+              : `Use a wallet and a test credential to sign in to ${title}.`}
+          </p>
         </div>
+        {appId === 'demo-b' && user && <Library authenticated />}
         <div className="workspace-grid">
           <section className="verification-panel" aria-labelledby="verification-title">
             <div className="panel-heading">
@@ -248,6 +254,7 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
             <p className="small-note">Each application has a separate identifier and session.</p>
           </aside>
         </div>
+        {appId === 'demo-b' && !user && <Library authenticated={false} />}
         <section className="transaction" aria-labelledby="transaction-title">
           <div>
             <p className="section-label">Optional / After verification</p>
