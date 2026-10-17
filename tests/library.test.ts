@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFile, mkdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -12,6 +12,10 @@ it('protects catalog and file bytes with an active Campus Library session', asyn
   await mkdir('.local', { recursive: true });
   const directory = await mkdtemp(path.resolve('.local/library-test-'));
   try {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ root: '123' }))),
+    );
     await db.exec(await readFile('scripts/schema.sql', 'utf8'));
     const query = async (sql: string, values?: unknown[]) => {
       const result = await db.query(sql, values);
@@ -25,7 +29,14 @@ it('protects catalog and file bytes with an active Campus Library session', asyn
       query('INSERT INTO sessions(token_hash,app_id,claims,expires_at) VALUES($1,$2,$3,$4)', [
         createHash('sha256').update(token).digest('hex'),
         app,
-        JSON.stringify({ sub: 'test-subject', wallet: 'test-wallet' }),
+        JSON.stringify({
+          sub: 'test-subject',
+          wallet: 'test-wallet',
+          studentEnrolled: true,
+          credentialPolicy: 'active-enrollment-unexpired-card-email-wallet-v1',
+          registryRoot: '123',
+          accessUntil: Math.floor(Date.now() / 1000) + 28000,
+        }),
         new Date(Date.now() + (expired ? -60000 : 60000)).toISOString(),
       ]);
     await insert('active-token', 'demo-b');
@@ -77,11 +88,24 @@ it('protects catalog and file bytes with an active Campus Library session', asyn
     expect((await handler.file(request('/api/library/unknown', cookie), '../../.env')).status).toBe(
       404,
     );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ root: '456' }))),
+    );
+    expect((await handler.list(request('/api/library', cookie))).status).toBe(401);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 503 })),
+    );
+    expect((await handler.file(request('/api/library/cn-notes', cookie), 'cn-notes')).status).toBe(
+      503,
+    );
     await query('DELETE FROM sessions WHERE app_id=$1', ['demo-b']);
     expect((await handler.file(request('/api/library/cn-notes', cookie), 'cn-notes')).status).toBe(
       401,
     );
   } finally {
+    vi.unstubAllGlobals();
     await db.close();
     if (
       path.dirname(directory) !== path.resolve('.local') ||
