@@ -8,6 +8,7 @@ import { authAbi, proofArgs, studentAbi, studentProofArgs } from '@zk-auth/share
 import { testPublicKeyHash } from '@anon-aadhaar/core';
 import { PgStore } from './store';
 import { buildServer } from './server';
+import { createStudentMailer } from './mail';
 function required(k: string) {
   const value = process.env[k];
   if (!value) throw new Error(`Missing ${k}`);
@@ -88,7 +89,7 @@ const server = await buildServer(
     db: pool,
     chainId,
     verifier: studentVerifier,
-    mailDirectory: process.env.STUDENT_MAIL_DIRECTORY,
+    mailer: createStudentMailer(),
     getRoot: async () =>
       String(
         await client.readContract({
