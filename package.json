@@ -39,7 +39,9 @@
     "student:ocr": "tsx scripts/setup-ocr.ts",
     "student:card": "tsx scripts/generate-student-card.ts",
     "student:validate": "tsx scripts/validate-student.ts",
-    "student:activate": "tsx scripts/student-admin.ts activate"
+    "student:activate": "tsx scripts/student-admin.ts activate",
+    "student:email": "tsx scripts/student-admin.ts email",
+    "student:mail:check": "tsx scripts/check-mail.ts"
   },
   "dependencies": {
     "@anon-aadhaar/contracts": "2.4.3",
@@ -53,6 +55,7 @@
     "jose": "5.10.0",
     "jsqr": "1.4.0",
     "next": "15.5.28",
+    "nodemailer": "10.1.2",
     "pg": "8.13.3",
     "qrcode": "1.5.4",
     "react": "18.3.1",
@@ -70,6 +73,7 @@
     "@playwright/test": "1.58.2",
     "@types/json-bigint": "1.0.4",
     "@types/node": "22.13.4",
+    "@types/nodemailer": "8.0.2",
     "@types/pako": "2.0.3",
     "@types/pg": "8.11.11",
     "@types/qrcode": "1.5.5",
