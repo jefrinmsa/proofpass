@@ -822,3 +822,37 @@ footer > span:first-child span {
     gap: 6px;
   }
 }
+.student-fields {
+  border: 0;
+  border-top: 1px solid var(--line, #d8dfdf);
+  margin: 1.5rem 0;
+  padding: 1.5rem 0 0;
+  min-width: 0;
+}
+.student-fields legend {
+  font-size: 1rem;
+  font-weight: 650;
+  padding: 0 0.5rem 0 0;
+}
+.student-fields label {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  font-weight: 550;
+}
+.student-fields input:not([type='file']) {
+  border: 1px solid #b8c2ca;
+  border-radius: 4px;
+  padding: 0.7rem;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  background: white;
+  color: #192f46;
+}
+.student-fields button {
+  margin: 0.4rem 0.5rem 0.4rem 0;
+}
+.student-flow .status {
+  overflow-wrap: anywhere;
+}
