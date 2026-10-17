@@ -1,3 +1,10 @@
+import { readFile } from 'node:fs/promises';
+import 'dotenv/config';
+import pg from 'pg';
+import { createPublicClient, createWalletClient, http } from 'viem';
+import { hardhat } from 'viem/chains';
+import { studentAbi } from '../packages/shared/src/student';
+import { studentCrypto } from '../packages/shared/src/student-crypto';
 import { test, expect } from '@playwright/test';
 import { privateKeyToAccount } from 'viem/accounts';
 // Public Hardhat development account; used only by this browser test, never shipped to clients.
@@ -51,81 +58,124 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   page.on('request', (req) => {
     if (req.url().includes(':4000/v1/') && req.method() === 'POST') posts.push(req.postDataJSON());
   });
+
   await page.goto('http://localhost:3000');
   await expect(
     page.getByText('Test credentials — educational demonstration', { exact: true }),
   ).toBeVisible();
-  await page.screenshot({ path: '.local/student-lab.png', fullPage: true });
   await page.getByRole('button', { name: 'Connect browser wallet' }).click();
-  console.log('Test wallet connected');
-  await page.getByRole('button', { name: '1. Sign login challenge' }).click();
-  console.log('Challenge requested');
-  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
-  await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/adult.png');
-  await page.getByRole('button', { name: 'Generate private proof' }).click();
-  await expect(page.getByRole('status')).toContainText(/Proof generated|PROOF_GENERATION_FAILED/, {
-    timeout: 180000,
+  await expect(page.getByLabel('Student ID photo', { exact: true })).toBeEnabled();
+  await page
+    .getByLabel('Student ID photo', { exact: true })
+    .setInputFiles('fixtures/student-card.png');
+  await expect(page.getByRole('status')).toContainText('Review the extracted', { timeout: 120000 });
+  await expect(page.getByLabel('Roll number', { exact: true })).toHaveValue('CSE2026001');
+  await expect(page.getByLabel('Card expiry date')).toHaveValue('2027-06-30');
+  await page.getByLabel('Registered college email').fill('student1@students.example.test');
+  const pendingResponse = page.waitForResponse(
+    (r) => r.url().endsWith('/enrollment/request') && r.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Request verification code' }).click();
+  const pending = await (await pendingResponse).json();
+  expect(pending.emailMode).toBe('local-test');
+  const mail = JSON.parse(await readFile('.local/student-mail/' + pending.id + '.json', 'utf8'));
+  await page.getByLabel('Email verification code').fill(mail.code);
+  await page.getByRole('button', { name: 'Verify code and issue credential' }).click();
+  await expect(page.getByRole('status')).toContainText('Enrollment verified', { timeout: 30000 });
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save private credential' }).click();
+  await (await download).saveAs('.local/browser-student-credential.json');
+  await page.getByRole('button', { name: 'Generate student proof' }).click();
+  await expect(page.getByRole('status')).toContainText('Private enrollment proof ready', {
+    timeout: 120000,
   });
-  await expect(page.getByRole('status')).toContainText('Proof generated');
-  await page.getByRole('button', { name: '3. Verify proof and sign in' }).click();
+  const aResponse = page.waitForResponse((r) => r.url().endsWith('/student/auth/verify'));
+  await page.getByRole('button', { name: 'Verify proof and sign in', exact: true }).click();
+  const aAssertion = (await (await aResponse).json()).assertion;
   await expect(page.getByText('Access granted to Student Lab')).toBeVisible();
   const subjectA = await page.locator('.success code').first().textContent();
   await page.getByRole('button', { name: 'Publish proof demonstration' }).click();
   await expect(page.locator('.transaction')).toContainText('gas used', { timeout: 30000 });
-  await page.screenshot({ path: '.local/student-lab-authenticated.png', fullPage: true });
+  await page.screenshot({ path: '.local/student-lab-student-auth.png', fullPage: true });
   await page.goto('http://localhost:3001');
-  expect((await page.request.get('http://localhost:3001/api/library')).status()).toBe(401);
-  expect((await page.request.get('http://localhost:3001/api/library/cn-notes')).status()).toBe(401);
-  await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
+  expect((await page.request.get('/api/library')).status()).toBe(401);
+  expect((await page.request.get('/api/library/cn-notes')).status()).toBe(401);
+  expect(
+    (
+      await page.request.post('/api/session', {
+        headers: { origin: 'http://localhost:3001' },
+        data: { assertion: aAssertion },
+      })
+    ).status(),
+  ).toBe(401);
   await page.getByRole('button', { name: 'Connect browser wallet' }).click();
-  await page.getByRole('button', { name: '1. Sign login challenge' }).click();
-  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
-  await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/adult.txt');
-  await page.getByRole('button', { name: 'Generate private proof' }).click();
-  await expect(page.getByRole('status')).toContainText('Proof generated', { timeout: 180000 });
-  await page.getByRole('button', { name: '3. Verify proof and sign in' }).click();
-  await expect(page.getByText('Access granted to Campus Library')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Your reading shelf' })).toBeVisible();
-  await expect(page.locator('.material-row')).toHaveCount(3);
-  const protectedPdf = await page.request.get('http://localhost:3001/api/library/cn-notes');
-  expect(protectedPdf.status()).toBe(200);
-  expect((await protectedPdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
-  const protectedSlides = await page.request.get(
-    'http://localhost:3001/api/library/agile-operations?download=1',
-  );
-  expect(protectedSlides.status()).toBe(200);
-  expect(protectedSlides.headers()['content-disposition']).toContain('attachment');
-  await page.screenshot({ path: '.local/campus-library-materials.png', fullPage: true });
-  expect(await page.locator('.success code').first().textContent()).not.toBe(subjectA);
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  expect((await page.request.get('http://localhost:3001/api/library/cn-notes')).status()).toBe(401);
-  await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
-  await page.getByRole('button', { name: '1. Sign login challenge' }).click();
-  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
-  await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/underage.png');
-  await page.getByRole('button', { name: 'Generate private proof' }).click();
-  await expect(page.getByRole('status')).toContainText(/Proof generated|PROOF_GENERATION_FAILED/, {
-    timeout: 180000,
+  await expect(page.getByLabel('Load a saved student credential')).toBeEnabled();
+  await page
+    .getByLabel('Load a saved student credential')
+    .setInputFiles('.local/browser-student-credential.json');
+  await expect(page.getByRole('status')).toContainText('Private credential loaded');
+  await page.getByRole('button', { name: 'Generate student proof' }).click();
+  await expect(page.getByRole('status')).toContainText('Private enrollment proof ready', {
+    timeout: 120000,
   });
-  await expect(page.getByRole('status')).toContainText('Proof generated');
-  await page.getByRole('button', { name: '3. Verify proof and sign in' }).click();
-  await expect(page.getByRole('status')).toContainText('AGE_REQUIREMENT_NOT_MET');
-  await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
-  await page.goto('http://localhost:3000');
-  await expect(page.getByText('Access granted to Student Lab')).toBeVisible();
-  for (const payload of posts) {
-    expect(JSON.stringify(payload)).not.toMatch(
-      /SYNTHETIC STUDENT|qrData|dateOfBirth|certificateFile|qrDataPadded|signature.*argumentType/,
-    );
-    expect(Object.keys(payload).sort()).toEqual(
-      'appId' in payload ? ['appId', 'wallet'] : ['challengeId', 'proof', 'signature'],
-    );
+  await page.getByRole('button', { name: 'Verify proof and sign in', exact: true }).click();
+  await expect(page.getByText('Access granted to Campus Library')).toBeVisible();
+  await expect(page.locator('.material-row')).toHaveCount(3);
+  expect(await page.locator('.success code').first().textContent()).not.toBe(subjectA);
+  const pdf = await page.request.get('/api/library/cn-notes');
+  expect(pdf.status()).toBe(200);
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  const ppt = await page.request.get('/api/library/agile-operations?download=1');
+  expect(ppt.status()).toBe(200);
+  expect(ppt.headers()['content-disposition']).toContain('attachment');
+  await page.screenshot({ path: '.local/campus-library-student-materials.png', fullPage: true });
+  const proofPosts = posts.filter((p) => 'proof' in p);
+  expect(proofPosts).toHaveLength(2);
+  for (const p of proofPosts) {
+    expect(Object.keys(p).sort()).toEqual(['challengeId', 'proof', 'signature']);
+    expect(JSON.stringify(p)).not.toMatch(/roll|expiry|email|secret|photo|image|CSE2026001/);
   }
-  expect(posts.filter((p) => 'proof' in p)).toHaveLength(3);
-  expect(errors).toEqual([]);
+  for (const p of posts)
+    expect(JSON.stringify(p)).not.toMatch(/data:image|base64|qrData|dateOfBirth/);
+  const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const client = createPublicClient({ chain: hardhat, transport: http(process.env.RPC_URL) });
+  const issuer = createWalletClient({ chain: hardhat, transport: http(process.env.RPC_URL) });
+  async function sync() {
+    const rows = await db.query(
+      'SELECT c.leaf FROM student_credentials c JOIN student_enrollments e USING(roll) WHERE e.active=true AND c.expires_at=e.expires_at ORDER BY c.roll',
+    );
+    const { tree } = await studentCrypto();
+    const root = tree(rows.rows.map((r) => r.leaf)).root;
+    const tx = await issuer.writeContract({
+      account: account.address,
+      address: process.env.STUDENT_VERIFIER_ADDRESS as `0x${string}`,
+      abi: studentAbi,
+      functionName: 'setRegistryRoot',
+      args: [BigInt(root)],
+    });
+    await client.waitForTransactionReceipt({ hash: tx });
+  }
+  try {
+    await db.query('UPDATE student_enrollments SET active=false WHERE roll=$1', ['CSE2026001']);
+    expect((await page.request.get('/api/library/cn-notes')).status()).toBe(503);
+    await sync();
+    expect((await page.request.get('/api/library/cn-notes')).status()).toBe(401);
+  } finally {
+    await db.query('UPDATE student_enrollments SET active=true WHERE roll=$1', ['CSE2026001']);
+    await sync();
+    await db.end();
+  }
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  expect((await page.request.get('/api/library/cn-notes')).status()).toBe(401);
+  await page.getByLabel('Roll number', { exact: true }).fill('NOT-ENROLLED');
+  await page.getByLabel('Card expiry date').fill('2027-06-30');
+  await page.getByLabel('Registered college email').fill('student1@students.example.test');
+  await page.getByRole('button', { name: 'Request verification code' }).click();
+  await expect(page.getByRole('status')).toContainText('ENROLLMENT_NOT_VERIFIED');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: '.local/student-lab-mobile.png', fullPage: true });
+  await page.screenshot({ path: '.local/student-login-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+  expect(errors).toEqual([]);
 });
