@@ -107,8 +107,8 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
       <div className="demo-notice">
         <span aria-hidden="true">i</span>
         <span>
-          <span>{EDUCATIONAL_NOTICE}</span>. Sample enrollment records and a local test mailbox; no
-          real email is sent.
+          <span>{EDUCATIONAL_NOTICE}</span>. Sample enrollment records. Check the form for the
+          configured email delivery method.
         </span>
       </div>
       <div className="workspace">
@@ -234,8 +234,8 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
               <div>
                 <dt>College email</dt>
                 <dd>
-                  A one-time code sent to the registered address. This demo uses a local test
-                  mailbox.
+                  A one-time code verifies access to the address in the enrollment record. Delivery
+                  uses the configured SMTP sender or an explicit local test mailbox.
                 </dd>
               </div>
               <div>
