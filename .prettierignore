@@ -1,0 +1,8 @@
+node_modules
+.local
+**/.next
+**/dist
+artifacts
+cache
+package-lock.json
+apps/*/public/zk
