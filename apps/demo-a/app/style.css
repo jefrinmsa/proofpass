@@ -1,0 +1,254 @@
+/* System font fallbacks keep the classroom demo independent of font services. */
+h1,
+h2,
+.brand,
+.brand span,
+button,
+.badge {
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+}
+:root {
+  color-scheme: dark;
+  font-family: 'DM Sans', sans-serif;
+  background: #0b1010;
+  color: #eef5ef;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 85% 10%, #1b362c66, transparent 45%);
+}
+main {
+  max-width: 1190px;
+  margin: auto;
+  padding: 28px 36px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #ffffff16;
+}
+.brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+}
+.brand span {
+  font-family: 'DM Sans';
+  font-size: 12px;
+  color: #8d9e95;
+  margin-left: 15px;
+}
+.badge {
+  font-size: 11px;
+  letter-spacing: 0.025em;
+  border: 1px solid #c5a46c66;
+  color: #e5c896;
+  border-radius: 30px;
+  padding: 9px 14px;
+  background: #c5a46c0a;
+}
+.hero {
+  padding: 64px 0 42px;
+  max-width: 710px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  color: var(--accent, #86efac);
+}
+h1 {
+  font-family: 'Space Grotesk';
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 1.07;
+  letter-spacing: -0.045em;
+  font-weight: 500;
+  margin: 18px 0 22px;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #a3b1aa;
+}
+.hero p {
+  max-width: 500px;
+  font-size: 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 24px;
+}
+.card {
+  border: 1px solid #ffffff18;
+  border-radius: 16px;
+  padding: 28px;
+  background: #111a17bf;
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.step {
+  font-size: 10px;
+  padding: 7px;
+  color: var(--accent);
+  border: 1px solid #ffffff24;
+  border-radius: 6px;
+}
+h2 {
+  font-family: 'Space Grotesk';
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin: 0 0 16px;
+}
+.card-title h2 {
+  margin: 0;
+}
+.pill {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--accent);
+  background: #ffffff09;
+  border-radius: 20px;
+  padding: 6px 10px;
+}
+button {
+  font:
+    600 12px 'DM Sans',
+    sans-serif;
+  cursor: pointer;
+  color: #102018;
+  background: var(--accent, #86efac);
+  border: 0;
+  border-radius: 8px;
+  padding: 13px 18px;
+  transition: 0.15s;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.quiet {
+  background: #ffffff0b;
+  color: #c4d1c9;
+  border: 1px solid #ffffff20;
+  padding: 8px 12px;
+}
+.wallet {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 12px;
+  background: #ffffff04;
+  border: 1px solid #ffffff14;
+  border-radius: 8px;
+}
+.policy {
+  font-size: 12px;
+}
+.proof-step {
+  margin-top: 20px;
+  border-top: 1px solid #ffffff15;
+  padding-top: 10px;
+}
+.proof-step button {
+  margin: 8px 8px 8px 0;
+}
+.status {
+  font-size: 12px;
+  padding: 12px;
+  background: #0003;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.claims {
+  padding: 0;
+  list-style: none;
+  margin: 24px 0;
+}
+.claims li {
+  font-size: 13px;
+  margin: 16px 0;
+  color: #d4e4d9;
+}
+.muted {
+  font-size: 12px;
+  color: #7d9186;
+}
+.text-link {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+.success {
+  background: #86efac0b;
+  border: 1px solid #86efac44;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+.success strong {
+  font-size: 14px;
+  color: var(--accent);
+}
+code {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.transaction {
+  margin-top: 24px;
+}
+.transaction p {
+  max-width: 820px;
+}
+.transaction a {
+  font-size: 12px;
+  color: var(--accent);
+}
+footer {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: #6e8577;
+  padding: 32px 0;
+}
+@media (max-width: 760px) {
+  main {
+    padding: 20px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .hero {
+    padding: 42px 0 24px;
+  }
+  .card {
+    padding: 22px;
+  }
+  .badge {
+    font-size: 10px;
+  }
+}
