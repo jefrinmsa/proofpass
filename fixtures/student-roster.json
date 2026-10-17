@@ -1,0 +1,26 @@
+[
+  {
+    "roll": "CSE2026001",
+    "email": "student1@students.example.test",
+    "expiry": "2027-06-30",
+    "active": true
+  },
+  {
+    "roll": "CSE2026002",
+    "email": "student2@students.example.test",
+    "expiry": "2027-06-30",
+    "active": true
+  },
+  {
+    "roll": "CSE2025003",
+    "email": "expired@students.example.test",
+    "expiry": "2025-06-30",
+    "active": true
+  },
+  {
+    "roll": "CSE2026004",
+    "email": "inactive@students.example.test",
+    "expiry": "2027-06-30",
+    "active": false
+  }
+]
