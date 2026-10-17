@@ -2,13 +2,13 @@
 
 College demonstration using ID-photo OCR, a registered-email verification step, wallet signatures, real Groth16 enrollment proofs, and a local blockchain verifier. Only enrolled students with a valid credential can open the protected Campus Library materials. **The active application has no age requirement.** The original Aadhaar demo is retained as legacy source; its assertions and sessions cannot unlock student resources.
 
-**Test credentials — educational demonstration.** The roster is synthetic. The local mailbox writes a code to a private file; it does not send email or prove real college email ownership. Real SMTP, real enrollment imports, production issuer custody, an audited circuit and an independent trusted setup are not implemented.
+**Test credentials — educational demonstration.** The roster is synthetic. Email delivery supports Gmail/other SMTP servers or an explicit local test mailbox. The local mailbox does not prove real email ownership. Real enrollment imports, production issuer custody, an audited circuit and an independent trusted setup are not implemented.
 
 ## What happens
 
 1. Connect the student's wallet on ProofPass Local, chain 31337.
 2. Select a student ID photo. Tesseract reads its text in the browser. Review or correct the roll number and expiry date.
-3. Submit those fields and the registered email to the college issuer. It matches the active enrollment record and exact expiry. It writes a one-time code to the local test mailbox.
+3. Submit those fields and the registered email to the college issuer. It matches the active enrollment record and exact expiry, then delivers a one-time code through the configured SMTP sender or explicit local test mailbox.
 4. Enter the code and sign the issuance message. The issuer authorizes a wallet-bound enrollment commitment and updates the college registry root on the local chain. The browser retains the secret credential; the secret is never sent to the issuer.
 5. The browser generates a fresh ZK membership proof for the application and login challenge. The roll number and card expiry are private circuit inputs.
 6. The backend checks the signature, challenge, application scope, wallet, current root, and proof through a contract read call. Successful verification produces a five-minute signed assertion.
@@ -97,7 +97,33 @@ The sample roster is fixtures/student-roster.json. CSE2025003 is expired; CSE202
 
 The date printed on a card is treated as inclusive through 23:59:59 UTC. The circuit requires authorized expiry >= the server-issued eight-hour access deadline; cards expiring sooner cannot start that session. Device time cannot extend validity. The contract also bounds the public access deadline against its block time.
 
-Codes last ten minutes, allow at most five confirmation attempts, and can issue only once. Restarting the API invalidates pending codes because their hash pepper is process-local. No public endpoint exposes mailbox codes. Enrollment requests are rate limited. Real delivery is disabled: only the explicit students.example.test sample domain and local mailbox are supported.
+Codes last ten minutes, allow at most five confirmation attempts, and can issue only once. Restarting the API invalidates pending codes because their hash pepper is process-local. No public endpoint exposes mailbox codes. Requests are limited per IP and to five per recipient in fifteen minutes. Failed or ambiguous sends invalidate the pending request; SMTP never falls back to the local test mailbox.
+
+## Real Gmail delivery
+
+1.  Enable Google 2-Step Verification and create an app password at https://myaccount.google.com/apppasswords while signed into the sender account. Use the generated app password rather than your normal Google password or a six-digit code. See https://support.google.com/accounts/answer/185833.
+2.  Save only that app password in `.local/gmail-app-password.txt`. This folder is ignored by Git. Never paste secrets into chat, fixtures, browser code or public environment variables.
+3.  Configure these server-only fields in `.env`:
+
+    EMAIL_DELIVERY=smtp
+    SMTP_HOST=smtp.gmail.com
+    SMTP_PORT=465
+    SMTP_USER=your-sender@gmail.com
+    SMTP_FROM=your-sender@gmail.com
+    SMTP_PASSWORD_FILE=.local/gmail-app-password.txt
+
+4.  Register the real recipient against an approved sample enrollment:
+
+        npm.cmd run student:email -- CSE2026001 recipient@example.com
+
+    This modifies only the local database. It removes the previous credential and pending issuance requests so the new address must be verified. It also synchronizes the registry root. The public fixture roster retains fake addresses. A Gmail recipient on a synthetic record demonstrates inbox access; it does not establish real college enrollment.
+
+5.  Run `npm.cmd run student:mail:check` to verify SMTP connectivity and authentication without sending email. Restart the API after changing `.env` and refresh the page. The form displays SMTP delivery status.
+6.  Enter the email registered in step 4, request a code and check that inbox and Spam folder. There is no local JSON copy of SMTP codes. A provider accepting a message does not guarantee inbox delivery.
+
+SMTP uses TLS with certificate validation (465 implicit TLS or 587 required STARTTLS). The OS resolver supplies the server IP; the original hostname is retained for TLS SNI and certificate validation. Credentials and raw SMTP traffic are not logged. Email contains only the verification code, request ID and explanatory text, with no ID image, roll, card expiry, wallet or credential secret. Configuration discovery exposes only delivery mode and whether required settings are present, not credentials or a guarantee of successful provider authentication.
+
+Use `EMAIL_DELIVERY=local-test` and restart the API to return to the explicit test mailbox. That mode accepts only `@students.example.test`; SMTP rejects `.test` recipients. Browser walkthroughs are run in local-test mode and never send real messages. After assigning a real recipient to CSE2026001, use a separate test database or temporarily restore its fake address before those walkthroughs; re-register the real address afterward.
 
 ## Revocation and registry changes
 
@@ -132,6 +158,7 @@ Student endpoints:
 - POST /v1/student/enrollment/request: appId, roll, expiry (Unix seconds), email, wallet, secretCommitment
 - POST /v1/student/enrollment/confirm: id, code, signature over returned issuance message
 - GET /v1/student/registry: current approved commitments and root; no student fields
+- GET /v1/student/config: email delivery mode and configuration status; no secrets
 - POST /v1/student/challenges: appId, wallet
 - POST /v1/student/auth/verify: challengeId, signature, proof
 - GET /.well-known/jwks.json: assertion signing-key discovery
