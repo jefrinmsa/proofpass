@@ -74,6 +74,8 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   await expect(page.locator('.transaction')).toContainText('gas used', { timeout: 30000 });
   await page.screenshot({ path: '.local/student-lab-authenticated.png', fullPage: true });
   await page.goto('http://localhost:3001');
+  expect((await page.request.get('http://localhost:3001/api/library')).status()).toBe(401);
+  expect((await page.request.get('http://localhost:3001/api/library/cn-notes')).status()).toBe(401);
   await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
   await page.getByRole('button', { name: 'Connect browser wallet' }).click();
   await page.getByRole('button', { name: '1. Sign login challenge' }).click();
@@ -83,8 +85,20 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   await expect(page.getByRole('status')).toContainText('Proof generated', { timeout: 180000 });
   await page.getByRole('button', { name: '3. Verify proof and sign in' }).click();
   await expect(page.getByText('Access granted to Campus Library')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your reading shelf' })).toBeVisible();
+  await expect(page.locator('.material-row')).toHaveCount(3);
+  const protectedPdf = await page.request.get('http://localhost:3001/api/library/cn-notes');
+  expect(protectedPdf.status()).toBe(200);
+  expect((await protectedPdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  const protectedSlides = await page.request.get(
+    'http://localhost:3001/api/library/agile-operations?download=1',
+  );
+  expect(protectedSlides.status()).toBe(200);
+  expect(protectedSlides.headers()['content-disposition']).toContain('attachment');
+  await page.screenshot({ path: '.local/campus-library-materials.png', fullPage: true });
   expect(await page.locator('.success code').first().textContent()).not.toBe(subjectA);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  expect((await page.request.get('http://localhost:3001/api/library/cn-notes')).status()).toBe(401);
   await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
   await page.getByRole('button', { name: '1. Sign login challenge' }).click();
   await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
