@@ -9,7 +9,7 @@ Validated on Windows with Node 24.16.0, Circom 2.2 (circom2 0.2.23), circomlib 2
 - A real student proof, including local artifact loading and verification, took **1.93 seconds** in Node on this machine. This is an observation, not a browser guarantee.
 - The circuit has 3,323 nonlinear and 3,382 linear constraints, five public inputs, two public outputs and nineteen private inputs (including paths).
 - The optional local contract demonstration consumed **265,387 gas** in the contract fixture test. Browser proof calldata can differ slightly in gas. This is not a currency fee or Sepolia estimate.
-- The latest complete Chrome student walkthrough took **18.2 seconds**, with test setup bringing total runner time to 23.1 seconds. Compilation/cache state affects timing.
+- A development Chrome student walkthrough took **18.2 seconds**, with test setup bringing total runner time to 23.1 seconds. The final production-build walkthrough also passed in **8.6 seconds** (13.0 seconds total). Compilation/cache state affects timing.
 
 ## Coverage
 
@@ -40,3 +40,5 @@ The custom circuit and single-machine educational ceremony are unaudited. The pr
 PostgreSQL and blockchain updates cannot be atomic together. Root mismatch denies access and requires administrator resynchronization. Registry changes invalidate all old-root sessions. Cards must remain valid for the full eight-hour access window. Already downloaded files cannot be revoked.
 
 Sepolia student deployment and SMTP delivery have not been performed. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
+
+Both Next.js production builds passed. They report the existing upstream optional web-worker dynamic-dependency warning; the complete production browser walkthrough passed despite that warning.
