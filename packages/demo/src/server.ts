@@ -4,6 +4,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAssertionVerifier } from '@zk-auth/sdk/server';
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
+export async function readSession(req: NextRequest, appId: string, db: pg.Pool = pool) {
+  const token = req.cookies.get(`zk_${appId.replaceAll('-', '_')}`)?.value;
+  if (!token) return undefined;
+  const result = await db.query(
+    'SELECT claims FROM sessions WHERE token_hash=$1 AND app_id=$2 AND expires_at>NOW()',
+    [hash(token), appId],
+  );
+  return result.rows[0]?.claims as { sub: string; wallet: string } | undefined;
+}
 export function sessionHandlers(
   appId: string,
   origin: string,
@@ -24,15 +33,8 @@ export function sessionHandlers(
     NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   return {
     async GET(req: NextRequest) {
-      const token = req.cookies.get(cookie)?.value;
-      if (!token) return response({ authenticated: false });
-      const r = await sessionPool.query(
-        'SELECT claims FROM sessions WHERE token_hash=$1 AND app_id=$2 AND expires_at>NOW()',
-        [hash(token), appId],
-      );
-      return response(
-        r.rows[0] ? { authenticated: true, user: r.rows[0].claims } : { authenticated: false },
-      );
+      const user = await readSession(req, appId, sessionPool);
+      return response(user ? { authenticated: true, user } : { authenticated: false });
     },
     async POST(req: NextRequest) {
       if (req.headers.get('origin') !== origin)
