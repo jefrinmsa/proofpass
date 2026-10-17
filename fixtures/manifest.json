@@ -1,0 +1,26 @@
+{
+  "environment": "test",
+  "signedAtIST": "20261017194056176",
+  "cases": [
+    {
+      "name": "adult",
+      "dob": "01-01-1990",
+      "expectedAgeFlag": "1"
+    },
+    {
+      "name": "underage",
+      "dob": "01-01-2014",
+      "expectedAgeFlag": "0"
+    },
+    {
+      "name": "eighteenth-birthday",
+      "dob": "17-10-2008",
+      "expectedAgeFlag": "0"
+    },
+    {
+      "name": "nineteenth-birthday",
+      "dob": "17-10-2007",
+      "expectedAgeFlag": "1"
+    }
+  ]
+}
