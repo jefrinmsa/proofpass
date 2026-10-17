@@ -13,7 +13,7 @@ Validated on Windows with Node 24.16.0, Circom 2.2 (circom2 0.2.23), circomlib 2
 
 ## Coverage
 
-The **23 passing unit/integration tests** include aggregate cases for:
+The **27 passing unit/integration tests** include aggregate cases for:
 
 - Active roster matching; unknown, expired and inactive enrollment; mismatched email/expiry; unauthorized origins; disabled delivery configuration.
 - Issuance code mismatch, five-attempt lockout, expiry, single-use consumption and wallet mismatch. No email is sent in these tests.
@@ -22,6 +22,7 @@ The **23 passing unit/integration tests** include aggregate cases for:
 - Signed JWT signature/audience/environment/student policy/access deadline; atomic assertion redemption; application-isolated HttpOnly sessions.
 - Protected material bytes/headers, missing/expired/wrong-application sessions, changed roots and unavailable registry checks.
 - Actual circuit constraint rejection for changed roll hash, expiry, wallet, secret, siblings, nonbinary directions and root. Authorized expiry equal to the public access deadline is accepted; one second below fails.
+- SMTP configuration, TLS/SNI settings, one-recipient code content, provider rejection, local password-file loading, explicit separation of local and real delivery, per-recipient throttling, and invalidation of failed sends. SMTP codes are not written to the local mailbox and are not returned in API responses.
 
 The **15 passing contract tests** include five student tests: actual proof acceptance, tampered public inputs/proof rejection, college-only root updates, wallet-bound demonstration transactions and revocation. Ten historical Aadhaar contract tests remain.
 
@@ -33,12 +34,12 @@ Service tests inject the verifier to isolate policy; they use real wallet signat
 
 ## Limits
 
-Synthetic records, non-deliverable sample emails and a private filesystem mailbox simulate enrollment. Real email delivery and real college identity are not established. The updater uses an unlocked local Hardhat account; the student issuer refuses real networks.
+Synthetic records and a private filesystem mailbox are used in automated browser tests. Real SMTP delivery is supported with an administrator-configured sender and recipient stored only in local configuration/database. Real college identity is not established. The updater uses an unlocked local Hardhat account; the student issuer refuses real networks.
 
 The custom circuit and single-machine educational ceremony are unaudited. The proving key passed snarkjs zkey verify against the circuit and ceremony. Source, generated verifier and public artifact hashes are committed. Keys, witnesses, private credentials, codes, database contents and supplied course documents are ignored. Regenerating the setup requires redeploying the matching verifier.
 
 PostgreSQL and blockchain updates cannot be atomic together. Root mismatch denies access and requires administrator resynchronization. Registry changes invalidate all old-root sessions. Cards must remain valid for the full eight-hour access window. Already downloaded files cannot be revoked.
 
-Sepolia student deployment and SMTP delivery have not been performed. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
+Sepolia student deployment has not been performed. SMTP tests use an injected transport; live delivery depends on valid sender credentials and provider acceptance. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
 
 Both Next.js production builds passed. They report the existing upstream optional web-worker dynamic-dependency warning; the complete production browser walkthrough passed despite that warning.
