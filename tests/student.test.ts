@@ -7,6 +7,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { studentService } from '../apps/api/src/student';
 import { studentCrypto } from '../packages/shared/src/student-crypto';
 import type { StudentProof } from '@zk-auth/shared';
+import type { VerificationMail } from '../apps/api/src/mail';
 
 it('authorizes student issuance and rejects enrollment, email, wallet, replay and registry failures', async () => {
   const db = new PGlite();
@@ -188,6 +189,51 @@ it('authorizes student issuance and rejects enrollment, email, wallet, replay an
     root = tree([]).root;
     expect((await service.registry()).leaves).toEqual([]);
     await expect(service.request(body, origin)).rejects.toThrow('ENROLLMENT_NOT_VERIFIED');
+    // SMTP requests preserve issuer checks and never expose their code in the response.
+    const recipient = 'real-student@example.com';
+    await query('UPDATE student_enrollments SET active=true,email=$2 WHERE roll=$1', [
+      body.roll,
+      recipient,
+    ]);
+    const delivered: VerificationMail[] = [];
+    let deliveryFails = false;
+    const smtp = studentService({
+      ...deps,
+      mailDirectory: undefined,
+      mailer: {
+        mode: 'smtp',
+        configured: async () => true,
+        send: async (mail) => {
+          delivered.push(mail);
+          if (deliveryFails) throw new Error('provider-secret-must-not-leak');
+        },
+      },
+    });
+    const smtpBody = { ...body, email: recipient };
+    const response = await smtp.request(smtpBody, origin);
+    expect(response.emailMode).toBe('smtp');
+    expect(response).not.toHaveProperty('code');
+    expect(delivered[0].to).toBe(recipient);
+    const stored = (
+      await query('SELECT payload,code_hash FROM student_email_challenges WHERE id=$1', [
+        response.id,
+      ])
+    ).rows[0] as { payload: Record<string, unknown>; code_hash: string };
+    expect(stored.payload).not.toHaveProperty('code');
+    expect(stored.code_hash).not.toBe(delivered[0].code);
+    await expect(
+      smtp.request({ ...smtpBody, email: 'attacker@example.com' }, origin),
+    ).rejects.toThrow('ENROLLMENT_NOT_VERIFIED');
+    expect(delivered).toHaveLength(1);
+    deliveryFails = true;
+    await expect(smtp.request(smtpBody, origin)).rejects.toThrow('EMAIL_DELIVERY_FAILED');
+    await expect(smtp.issue(delivered[1].id, delivered[1].code, '0x1234', origin)).rejects.toThrow(
+      'EMAIL_CODE_EXPIRED_OR_LOCKED',
+    );
+    deliveryFails = false;
+    for (let i = 0; i < 3; i++) await smtp.request(smtpBody, origin);
+    await expect(smtp.request(smtpBody, origin)).rejects.toThrow('EMAIL_RATE_LIMITED');
+    expect(delivered).toHaveLength(5);
   } finally {
     await db.close();
     if (
