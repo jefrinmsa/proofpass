@@ -1,209 +1,151 @@
-# ProofPass — Aadhaar ZK authentication
+# ProofPass: private student access
 
-A college demonstration and reusable TypeScript/React authentication SDK. Connect a wallet, read a **synthetic Aadhaar QR credential locally**, generate a real Groth16 proof in the browser, verify it through an EVM contract read, and exchange a short-lived assertion for an application session.
+College demonstration using ID-photo OCR, a registered-email verification step, wallet signatures, real Groth16 enrollment proofs, and a local blockchain verifier. Only enrolled students with a valid credential can open the protected Campus Library materials. **The active application has no age requirement.** The original Aadhaar demo is retained as legacy source; its assertions and sessions cannot unlock student resources.
 
-**Test credentials — educational demonstration.** This is not a government authentication service or a production identity product. Real Aadhaar documents are outside this version's scope.
+**Test credentials — educational demonstration.** The roster is synthetic. The local mailbox writes a code to a private file; it does not send email or prove real college email ownership. Real SMTP, real enrollment imports, production issuer custody, an audited circuit and an independent trusted setup are not implemented.
 
-## Age rule: an important limitation
+## What happens
 
-Anon Aadhaar 2.4.3's v2 circuit checks **completed age > 18**, using the **date in the signed QR**, not today's login date. An eighteenth-birthday credential is rejected; a nineteenth-birthday credential is accepted. The QR timestamp public input is rounded to the signing hour and converted from IST. We expose the upstream predicate honestly as **19+ at QR signing**. Exact 18+ acceptance would require a different reviewed circuit; changing a JavaScript comparison cannot change what this proof establishes.
+1. Connect the student's wallet on ProofPass Local, chain 31337.
+2. Select a student ID photo. Tesseract reads its text in the browser. Review or correct the roll number and expiry date.
+3. Submit those fields and the registered email to the college issuer. It matches the active enrollment record and exact expiry. It writes a one-time code to the local test mailbox.
+4. Enter the code and sign the issuance message. The issuer authorizes a wallet-bound enrollment commitment and updates the college registry root on the local chain. The browser retains the secret credential; the secret is never sent to the issuer.
+5. The browser generates a fresh ZK membership proof for the application and login challenge. The roll number and card expiry are private circuit inputs.
+6. The backend checks the signature, challenge, application scope, wallet, current root, and proof through a contract read call. Successful verification produces a five-minute signed assertion.
+7. The application's backend redeems the assertion once for an HttpOnly session, bounded by the proved access deadline and eight hours. Each protected material request checks the current registry; revoked or stale sessions cannot download files.
 
-Upstream references: [core and contracts](https://github.com/anon-aadhaar/anon-aadhaar), [integration documentation](https://documentation.anon-aadhaar.pse.dev/docs/quick-setup), [age extractor source](https://github.com/anon-aadhaar/anon-aadhaar/blob/main/packages/circuits/src/helpers/extractor.circom).
+ZK proofs are mathematical evidence, not encrypted documents. An ID photo or OCR output alone cannot establish authenticity. Enrollment records and the registered-email step authorize issuance. This does not establish biometric identity or that a printed photo is genuine.
 
-## Requirements
+## Privacy and trust
 
-- Node.js 22 or 24, npm, and Git. Validated here with Node 24.16.0 on Windows.
-- Chrome or a browser wallet such as MetaMask. For manual use, configure a **local development wallet**, RPC `http://127.0.0.1:8545`, chain ID `31337`. Never use Hardhat's public development keys for real funds.
-- PostgreSQL 17 via Docker, or the included optional embedded PostgreSQL development server.
-- About 650 MB for the proving artifacts; several GB of free RAM during proving. Browser timing depends on the device. No custom trusted setup is generated.
+| Data                                                                      | Where it goes                                                                               |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ID image and OCR text                                                     | Browser only; no image upload or external OCR service                                       |
+| Roll number, expiry, registered email                                     | College issuer during enrollment verification; stored in its roster/pending issuance record |
+| Credential secret                                                         | Browser memory and optional user-downloaded private JSON; never sent to the backend         |
+| Wallet and salted enrollment commitment                                   | Issuer database; only the aggregate registry root is published by registry updates          |
+| Proof, application nullifier, root, wallet, access deadline, login signal | Authentication service and contract read call                                               |
+| Subject and session claims                                                | Application backend; no roll number, email or card expiry                                   |
+| Optional demonstration transaction                                        | Proof/public inputs become public and linked to the wallet                                  |
 
-## Run locally
+The issuer already knows the enrollment record and wallet during issuance. The library does not learn the private fields from the proof, but this deployment shares an operator/database, so it does not claim privacy against that operator or complete anonymity. Public wallet addresses also permit correlation between apps.
 
-Run commands from the repository root. In Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`.
+## Run locally (Windows PowerShell)
 
-```sh
-npm ci
-npm run build -w @zk-auth/shared
-npm run build -w @zk-auth/sdk
-npm run keys:generate
-npm run fixtures:generate
-npm run artifacts:fetch
-```
+Use Node 22 or 24 and Chrome. Start from the repository root. Do not commit .env, .local, private credentials, mailbox files, or course documents.
 
-Generate signing keys once; the command refuses to overwrite existing keys. Fixtures are synthetic, signed with the upstream public test key. The download script verifies pinned SHA-256 hashes, caches only public proving artifacts, and links/copies them into both apps' public directories. The signing private key under `.local/` is for application assertions and is ignored by Git.
+Install and build the shared package:
 
-Start the chain in its own terminal:
+    npm.cmd ci
+    Copy-Item .env.example .env
+    npm.cmd run build -w @zk-auth/shared
+    npm.cmd run keys:generate
 
-```sh
-npm run chain
-```
+Start the database in one terminal:
 
-In another terminal:
+    npm.cmd run db:local
 
-```sh
-npm run deploy:local
-```
+Start the blockchain in another terminal (keep this terminal running):
 
-Choose one database option:
+    npm.cmd run chain
 
-```sh
-# Option A: PostgreSQL in Docker (start Docker Desktop first)
-docker compose up -d
-npm run configure:local
-```
+Prepare both verifier deployments. The API still hosts legacy endpoints for compatibility, so its old test verifier must also exist. The large Aadhaar proving artifacts are unnecessary for student login.
 
-```sh
-# Option B: Docker-free, localhost-only embedded PostgreSQL, in its own terminal
-npm run db:local
-# Then, in another terminal:
-npm run configure:local -- --embedded
-```
+    npm.cmd run deploy:local
+    npm.cmd run configure:local -- --embedded
+    npm.cmd run student:setup
+    npm.cmd run student:ocr
+    npm.cmd run student:deploy
+    npm.cmd run student:configure
+    npm.cmd run db:migrate
+    npm.cmd run app:register -- demo-a http://localhost:3000
+    npm.cmd run app:register -- demo-b http://localhost:3001
+    npm.cmd run student:seed
+    npm.cmd run student:card
+    npm.cmd run build -w @zk-auth/shared
+    npm.cmd run build -w @zk-auth/sdk
 
-The embedded server is a development convenience with a connection multiplexer; use regular PostgreSQL for deployment and independent concurrency/load validation. It binds only to `127.0.0.1:5433` and does not provide a production authentication or TLS boundary. Do not run both database options on the same configured URL.
+student:setup compiles Circom 2.2, creates a local educational ceremony with random contributions, verifies the proving key, generates the Solidity verifier and copies public proving artifacts to both apps. Regenerating it changes the verification key: redeploy and reconfigure the student contract, resynchronize the registry, then restart the API. The single-machine ceremony and circuit have not been independently audited. It is not a production setup.
 
-After configuring the database:
+student:ocr downloads the public English language model once, then serves the OCR worker/core/model from the local apps. No student image is sent to that download host. Asset hashes are recorded in scripts/ocr-artifact-hashes.json; student proving hashes are in scripts/student-artifact-hashes.json.
 
-```sh
-npm run db:migrate
-npm run app:register -- demo-a http://localhost:3000
-npm run app:register -- demo-b http://localhost:3001
-```
+Run each server in its own terminal:
 
-Start each service in a separate terminal:
+    npm.cmd run dev:api
+    npm.cmd run dev:a
+    npm.cmd run dev:b
 
-```sh
-npm run dev:api
-npm run dev:a
-npm run dev:b
-```
+Open Student Lab at http://localhost:3000 and Campus Library at http://localhost:3001. Production builds use npm.cmd run build; start each app with npm.cmd run start -w @zk-auth/demo-a (or demo-b).
 
-Open [Student Lab](http://localhost:3000) and [Campus Library](http://localhost:3001). Connect the local wallet, sign a challenge, select `fixtures/adult.png` or `fixtures/adult.txt`, generate a proof, then verify and sign in. Use `underage`, `eighteenth-birthday`, and `nineteenth-birthday` fixtures to show the age boundary. QR images are decoded with jsQR in the browser; no file is uploaded. A fresh signed challenge and proof are required for each login. Regenerate the fixtures when demonstrating age boundaries on another date.
+Configure MetaMask's local test network: RPC http://127.0.0.1:8545, chain ID 31337, symbol ETH. Normal login needs no transaction fee. The optional transaction uses local test ETH; never send real funds to development accounts. The issuer uses an unlocked Hardhat account and refuses to start as a real-network student issuer.
 
-`configure:local` updates `.env` and writes each app's ignored `.env.local`. It deliberately points to the latest local deployment. Restart services after changing configuration. A reset Hardhat chain requires redeployment and reconfiguration.
+## Try the sample student
 
-For production-build testing, run `npm run build` after configuration, then `npm run start -w @zk-auth/demo-a` and `npm run start -w @zk-auth/demo-b`. Public Next.js environment variables are embedded at build time.
+Download the sample ID photo from the login screen, or select fixtures/student-card.png. OCR should read:
 
-## How it works
+    Roll number: CSE2026001
+    Card expiry date: 2027-06-30
+    Registered email: student1@students.example.test
 
-### Protected Campus Library materials
+Request a code. The page shows the request ID. In an administrator terminal, run:
 
-Campus Library displays its reading shelf after successful login. Its catalog and every file request require an unexpired `demo-b` session; a Student Lab session does not grant library access. PDFs can open in the browser or download; PowerPoint files download in their original format. Responses disable caching, and sign-out blocks subsequent file requests. Files already downloaded cannot be revoked.
+    npm.cmd run student:mail -- REQUEST_ID
 
-The supplied materials are stored locally in `apps/demo-b/.local/library/`, outside Next.js `public/` and excluded from Git. Their contents are **not published to the public GitHub repository**. On a fresh checkout or deployment, place the three original files in that directory: `jefrincn.pdf`, `SOFTWARE PROJECT MANAGEMENT AND PROCESS MODELS [Autosaved].pptx`, and `Agile_Operations_Management.pptx`. Run the app from its workspace as documented above. Without these files, the protected catalog reports unavailable. Share only material you are authorized to distribute.
+Enter the six-digit code in the page, verify and sign with the wallet, save the private credential JSON, generate the proof, then choose Verify proof and sign in. Use the saved credential with the same wallet in the other app to avoid issuing a replacement. Every login requires a fresh proof and wallet signature.
 
-```mermaid
-sequenceDiagram
- participant U as Browser + wallet
- participant A as Authentication API
- participant C as EVM verifier
- participant D as Application backend
- U->>A: App ID + wallet (Origin header)
- A-->>U: Single-use five-minute challenge + signal
- U->>U: Wallet signature + local QR proof generation
- U->>A: Signature + proof + public inputs
- A->>C: eth_call verify (test signing key)
- C-->>A: Proof valid / invalid
- A->>A: Atomically consume challenge
- A-->>U: Five-minute RS256 assertion
- U->>D: Redeem assertion once
- D-->>U: Eight-hour HttpOnly session cookie
-```
+The sample roster is fixtures/student-roster.json. CSE2025003 is expired; CSE2026004 is inactive. Unknown roll numbers, changed expiry dates, and unregistered email addresses are rejected. These fixtures are examples, not an existing college student database.
 
-The challenge commits to app ID, allowed origin, wallet, chain ID, verifier address, random nonce, expiry, and app-specific nullifier seed. Its canonical message is hashed to a uint256 signal. Anon Aadhaar commits a further protocol-compatible signal hash inside the proof. The contract reconstructs that hash, so substituting a challenge or wallet breaks verification.
+The date printed on a card is treated as inclusive through 23:59:59 UTC. The circuit requires authorized expiry >= the server-issued eight-hour access deadline; cards expiring sooner cannot start that session. Device time cannot extend validity. The contract also bounds the public access deadline against its block time.
 
-Normal login uses `eth_call`; it makes no blockchain transaction and costs the user no gas. The optional **Publish proof demonstration** button sends a transaction with public proof inputs and emits an event. It does not create an application session. Publishing links the proof inputs to the sender wallet; use it only to illustrate blockchain verification.
+Codes last ten minutes, allow at most five confirmation attempts, and can issue only once. Restarting the API invalidates pending codes because their hash pepper is process-local. No public endpoint exposes mailbox codes. Enrollment requests are rate limited. Real delivery is disabled: only the explicit students.example.test sample domain and local mailbox are supported.
 
-The backend explicitly checks the app, origin, signal, seed, age flag, absence of additional disclosure, non-future QR timestamp, and wallet signature. At startup it verifies the RPC chain and wrapper's configured test-key hash. Cryptographic verification uses the test-key-pinned on-chain verifier; malformed or wrong-key proofs cannot authenticate. An unavailable RPC fails closed. The QR signing date is not a freshness assertion: there is no claim that a credential was recently issued or remains current.
+## Revocation and registry changes
 
-## Reuse the SDK
+    npm.cmd run student:revoke -- CSE2026001
 
-`packages/sdk` builds ESM/CommonJS clients and server helpers, an ESM React component with its worker asset, and declaration files. `packages/shared` supplies shared types. Both remain private packages until you deliberately choose your own publishing scope. React consumers need a bundler supporting `new Worker(new URL(..., import.meta.url))`, as demonstrated by the Next.js apps.
+This disables the record and updates the on-chain registry root. Root changes conservatively invalidate all sessions made under the previous root, including after new issuance or credential replacement. Students sign in again using their existing valid credential and a fresh membership path. The tree supports 256 active credentials in this demo.
 
-```sh
-npm run build -w @zk-auth/shared
-npm run build -w @zk-auth/sdk
-npm pack -w @zk-auth/shared
-npm pack -w @zk-auth/sdk
-```
+Each protected request checks database session expiry plus the registry endpoint, which recomputes approved leaves and compares their root with the blockchain. RPC outages, a failed root update, or a database/chain mismatch deny access. A root transaction and database commit are not one atomic operation; mismatch fails closed and an administrator must resynchronize using student:seed. Do not expose Hardhat's unlocked RPC or this local issuer on the public internet.
 
-Install both generated tarballs into a consuming project, along with compatible React 18 and wagmi 2. Use the sample apps' Next.js configuration for browser snarkjs resolution and the public test certificate. The browser component requires `WagmiProvider`; initialize wallet transports for your intended test network.
+## Protected materials
 
-```tsx
-import { ZkAuthButton } from '@zk-auth/sdk/react';
+Keep the supplied documents in apps/demo-b/.local/library/:
 
-<ZkAuthButton
-  apiUrl="http://localhost:4000"
-  appId="your-app"
-  onAuthenticated={async (assertion) => {
-    const result = await fetch('/api/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assertion }),
-    });
-    if (!result.ok) throw new Error('Session exchange failed');
-  }}
-/>;
-```
+- jefrincn.pdf
+- SOFTWARE PROJECT MANAGEMENT AND PROCESS MODELS [Autosaved].pptx
+- Agile_Operations_Management.pptx
 
-For lower-level integrations, `ZkAuthClient.challenge(wallet)` returns the message and signal; sign the message, produce a proof with that signal and seed, then call `verify(challengeId, signature, proof)`. No document or birth-date field exists in the API envelope.
+They are ignored by Git and served only through authenticated allowlisted routes. They are not placed in public/. The catalog and file endpoints reject missing, expired, legacy age-only and stale/revoked student sessions. Downloads already saved by a student cannot be revoked.
 
-On your application backend:
+## SDK integration
 
-```ts
-import { createAssertionVerifier } from '@zk-auth/sdk/server';
-const verify = createAssertionVerifier({
-  issuer: 'http://localhost:4000',
-  audience: 'your-app',
-  jwksUrl: 'http://localhost:4000/.well-known/jwks.json',
-});
-const claims = await verify(assertion);
-// Atomically redeem claims.jti once, then issue your own HttpOnly session.
-```
+The React entry exports StudentAuthButton. Place it inside WagmiProvider and QueryClientProvider and pass apiUrl, appId and an async onAuthenticated(assertion) handler that posts the assertion to your own backend. An optional onProof callback supports a public transaction demonstration. Keep the exact registered application origin and a different nullifier seed per application.
 
-The verifier checks signature, RS256 algorithm, issuer, exact audience, expiry, maximum age, required claims, test environment, and age-policy marker. **JWT verification alone does not prevent replay**: copy the transactional redemption/session pattern in the sample server. Keep the assertion in memory, never localStorage. Register the exact allowed app origins through the administrator CLI; re-registering an existing app updates origins but preserves its seed and account identifiers.
+The server helper createAssertionVerifier from @zk-auth/sdk/server validates RS256 signatures, issuer, exact audience, expiry, environment, studentEnrolled, the student credential policy, registry root, and bounded access deadline. Redeem jti atomically once, store an opaque session token, and check current registry authorization on protected requests. The sample sessionHandlers and readSession show this behavior. Legacy Aadhaar assertions are rejected by this helper.
 
-## API and storage
+For JavaScript integrations without React, import StudentAuthClient from @zk-auth/sdk. It exposes requestEnrollment, confirmEnrollment, registry, challenge and verify. Proof generation uses the student circuit worker shown in the React implementation. No API method accepts an ID image or a credential secret.
 
-| Route                        | Input / result                                                                                                    |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `POST /v1/challenges`        | `{appId, wallet}` plus an allowed `Origin`; returns canonical challenge, expiry, signal, seed, chain and verifier |
-| `POST /v1/auth/verify`       | `{challengeId, signature, proof}`; returns `{assertion, expiresIn:300, environment:"test"}`                       |
-| `GET /.well-known/jwks.json` | Public RS256 assertion verification key                                                                           |
-| `GET /health`                | Process liveness and test environment; not a dependency readiness probe                                           |
-| Sample `/api/session`        | `POST` assertion redemption; `GET` session; `DELETE` logout                                                       |
+To reactivate an existing sample enrollment, run npm.cmd run student:activate -- CSE2026001. This also resynchronizes its registry root.
 
-The proof envelope contains `nullifierSeed`, `nullifier`, `timestamp`, `signal`, `reveal` (four public fields), and `groth16` (eight coordinates), all decimal strings. The server rejects unknown fields and out-of-range values. `reveal` must be `["1","0","0","0"]` for authentication.
+Student endpoints:
 
-Errors use `{error:{code}}`: `INVALID_REQUEST`, `ORIGIN_NOT_ALLOWED`, `CHALLENGE_NOT_FOUND`, `CHALLENGE_EXPIRED`, `CHALLENGE_USED_OR_EXPIRED`, `SIGNAL_MISMATCH`, `APP_SEED_MISMATCH`, `AGE_REQUIREMENT_NOT_MET`, `UNEXPECTED_DISCLOSURE`, `INVALID_QR_TIMESTAMP`, `WALLET_MISMATCH`, `WRONG_NETWORK`, `INVALID_PROOF`, `VERIFICATION_UNAVAILABLE`, or `RATE_LIMITED`. A wallet on the wrong chain is also rejected by the browser before signing. Request bodies are never logged. CORS allows browsers to receive errors; authorization independently enforces registered origins.
+- POST /v1/student/enrollment/request: appId, roll, expiry (Unix seconds), email, wallet, secretCommitment
+- POST /v1/student/enrollment/confirm: id, code, signature over returned issuance message
+- GET /v1/student/registry: current approved commitments and root; no student fields
+- POST /v1/student/challenges: appId, wallet
+- POST /v1/student/auth/verify: challengeId, signature, proof
+- GET /.well-known/jwks.json: assertion signing-key discovery
 
-PostgreSQL stores registered apps, short-lived challenges, assertion redemption IDs, and hashed opaque session tokens with minimum claims. The application subject is SHA-256 over app ID and its protocol nullifier. It is application-specific, not a universal uniqueness guarantee. Reusing a wallet across apps is independently linkable. No name, QR credential, DOB, photograph, address, or Aadhaar number is stored. Expired records can be removed with `npm run db:cleanup`.
+Stable failure codes include ENROLLMENT_NOT_VERIFIED, INVALID_EMAIL_CODE, EMAIL_CODE_EXPIRED_OR_LOCKED, EMAIL_SERVICE_NOT_CONFIGURED, WALLET_MISMATCH, WRONG_NETWORK, CHALLENGE_EXPIRED, PROOF_CONTEXT_MISMATCH, INVALID_PROOF, CHALLENGE_USED_OR_EXPIRED, REGISTRY_CHANGED, REGISTRY_UNAVAILABLE and VERIFICATION_UNAVAILABLE. No verification outage grants access.
 
-## Verification
+## Checks and architecture
 
-```sh
-npm run typecheck
-npm test
-npm run contracts:test
-npm run proof:validate -- adult
-npm run proof:validate -- underage
-npm run proof:validate -- eighteenth-birthday
-npm run proof:validate -- nineteenth-birthday
-npm run contracts:test
-npm run test:browser
-```
+    npm.cmd run student:validate
+    npm.cmd run typecheck
+    npm.cmd test
+    npm.cmd run contracts:test
+    npm.cmd run test:browser
 
-The real-proof commands require downloaded artifacts. They save ignored proof envelopes and timing reports in `.local`. Contract tests explicitly skip real fixtures until those files exist; run them again after generating all four proofs. Browser tests require the chain, deployed wrapper, configured API/database, both apps, and installed Chrome. They use a **test-only injected wallet**, perform actual browser proof generation, check app isolation/logout and underage rejection, exercise the optional local transaction, and inspect API request envelopes. Screenshots go under `.local/`; tracing is disabled to avoid recording 612 MB artifact responses. No test wallet is included in the frontend.
+student:validate must run before circuit and contract fixture tests. Browser tests require the running database, local chain, API and both apps. They use an isolated public Hardhat test wallet. Measurements and test limits are in docs/validation.md. The demonstration guide and sequence diagram are in docs/demo-walkthrough.md. Historical Aadhaar instructions are archived in docs/legacy-aadhaar.md and do not describe the active student login policy.
 
-Browser proving runs in an isolated Web Worker with parallelism capped at four. The worker is terminated after completion, failure, or a four-minute timeout; credentials and proofs are never persisted. Changing wallets or networks clears the login state. The worker cap does not modify the circuit or cryptographic verification.
-
-See [validation results](docs/validation.md) and the [college demonstration script](docs/demo-walkthrough.md).
-
-## Sepolia deployment
-
-Set `SEPOLIA_RPC_URL` and a funded **testnet-only** `DEPLOYER_PRIVATE_KEY` in ignored `.env`, then run `npm run deploy:sepolia`. Set API `CHAIN_ID=11155111`, `RPC_URL`, and `VERIFIER_ADDRESS` from `deployments/sepolia.json`. Configure both apps' wagmi RPC and wallet network for Sepolia, register exact HTTPS origins, and set the API/issuer URLs consistently. Serve app/API over HTTPS so secure cookies work. Use regular PostgreSQL, not the development socket adapter. Build again after public environment changes. No Sepolia deployment or testnet funding is included automatically.
-
-## Trust and limits
-
-The proof establishes possession of signed credential data and control of a wallet bound to the challenge. It does not establish rightful credential ownership, biometrics, government OTP authentication, citizenship, credential revocation, or person-level uniqueness. The authentication service is trusted to issue assertions; applications still trust its signing key and deployment configuration. Test-key credentials are forgeable by anyone with the upstream public test private key, by design.
-
-For a real-credential deployment, first choose a circuit meeting the exact age requirement, assess protocol maintenance and audits, review current UIDAI offline-verification requirements, establish signer-key rotation and revocation policies, add operational monitoring, and perform an independent security review. This repository deliberately implements the synthetic educational system only.
+Cryptographic tooling follows the official Circom constraint model (https://docs.circom.io/circom-language/constraint-generation/) and snarkjs Groth16 setup/proving APIs (https://github.com/iden3/snarkjs). This is a locally verified educational implementation, not a security audit.
