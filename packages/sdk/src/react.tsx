@@ -44,6 +44,7 @@ export function ZkAuthButton({
     const attempt = ++generation.current;
     setBusy(true);
     setProof(undefined);
+    setFile(undefined);
     try {
       const c = await new ZkAuthClient(apiUrl, appId).challenge(address);
       if (chainId !== c.chainId)
@@ -52,7 +53,7 @@ export function ZkAuthButton({
       if (attempt !== generation.current) return;
       setSignature(sig);
       setChallenge(c);
-      setStatus('Wallet signed. Choose a synthetic QR payload fixture (.txt).');
+      setStatus('Wallet signed. Choose an adult.png or adult.txt test credential.');
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Unable to start');
     } finally {
@@ -170,22 +171,34 @@ export function ZkAuthButton({
   }
   return (
     <div className="auth-flow">
-      <p className="policy">Required claim: {AGE_POLICY}. Date of birth stays on your device.</p>
-      <button disabled={!address || busy} onClick={begin}>
-        {challenge ? 'Restart challenge' : '1. Sign login challenge'}
-      </button>
-      {challenge && signature && (
-        <div key={challenge.id} className="proof-step">
+      <p className="policy">Age rule: {AGE_POLICY}. Your date of birth stays private.</p>
+      <div className="flow-step">
+        <span className="flow-number">01</span>
+        <div className="flow-body">
+          <h3>Sign a login request</h3>
+          <p>Confirm a one-time message in your wallet. No payment is required.</p>
+          <button disabled={!address || busy} onClick={begin}>
+            {challenge ? 'Restart challenge' : '1. Sign login challenge'}
+          </button>
+        </div>
+      </div>
+      <fieldset
+        className="flow-step proof-step"
+        disabled={!challenge || !signature || busy}
+        key={challenge?.id ?? 'no-challenge'}
+      >
+        <span className="flow-number">02</span>
+        <div className="flow-body">
+          <h3>Generate a credential proof</h3>
           <p>
-            2. Generate proof · challenge expires at{' '}
-            {new Date(challenge.expiresAt).toLocaleTimeString()}
+            Choose a supplied test QR image or text file. Proof generation happens on your device
+            and may take a minute.
           </p>
           <label>
-            Synthetic QR credential{' '}
+            Synthetic QR credential
             <input
               type="file"
               accept=".txt,.png,.jpg,.jpeg"
-              disabled={busy}
               onChange={(e) => {
                 setFile(e.target.files?.[0]);
                 setProof(undefined);
@@ -195,11 +208,23 @@ export function ZkAuthButton({
           <button disabled={!file || busy} onClick={generate}>
             Generate private proof
           </button>
+          {challenge && (
+            <p className="expiry">
+              Request expires at {new Date(challenge.expiresAt).toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+      </fieldset>
+      <div className="flow-step">
+        <span className="flow-number">03</span>
+        <div className="flow-body">
+          <h3>Verify and sign in</h3>
+          <p>Check the proof and create a session for this application.</p>
           <button disabled={!proof || busy} onClick={finish}>
             3. Verify proof and sign in
           </button>
         </div>
-      )}
+      </div>
       <p role="status" className="status">
         {status}
       </p>
