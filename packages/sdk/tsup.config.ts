@@ -8,5 +8,10 @@ const common = {
 export default defineConfig([
   { ...common, entry: ['src/index.ts', 'src/server.ts'] },
   { ...common, format: ['esm'], entry: ['src/react.tsx'], banner: { js: '"use client";' } },
-  { ...common, format: ['esm'], dts: false, entry: ['src/proof-worker.ts'] },
+  {
+    ...common,
+    format: ['esm'],
+    dts: false,
+    entry: ['src/proof-worker.ts', 'src/student-worker.ts'],
+  },
 ]);
