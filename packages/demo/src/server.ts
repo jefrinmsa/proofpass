@@ -11,7 +11,22 @@ export async function readSession(req: NextRequest, appId: string, db: pg.Pool =
     'SELECT claims FROM sessions WHERE token_hash=$1 AND app_id=$2 AND expires_at>NOW()',
     [hash(token), appId],
   );
-  return result.rows[0]?.claims as { sub: string; wallet: string } | undefined;
+  const claims = result.rows[0]?.claims;
+  // Legacy age-only sessions cannot authorize student materials.
+  if (
+    !claims?.studentEnrolled ||
+    claims.credentialPolicy !== 'active-enrollment-unexpired-card-email-wallet-v1' ||
+    typeof claims.accessUntil !== 'number' ||
+    claims.accessUntil <= Date.now() / 1000
+  )
+    return undefined;
+  const registry = await fetch(
+    `${process.env.AUTH_ISSUER ?? 'http://localhost:4000'}/v1/student/registry`,
+    { cache: 'no-store', signal: AbortSignal.timeout(10000) },
+  );
+  if (!registry.ok) throw new Error('REGISTRY_UNAVAILABLE');
+  if ((await registry.json()).root !== claims.registryRoot) return undefined;
+  return claims as { sub: string; wallet: string };
 }
 export function sessionHandlers(
   appId: string,
@@ -33,8 +48,12 @@ export function sessionHandlers(
     NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   return {
     async GET(req: NextRequest) {
-      const user = await readSession(req, appId, sessionPool);
-      return response(user ? { authenticated: true, user } : { authenticated: false });
+      try {
+        const user = await readSession(req, appId, sessionPool);
+        return response(user ? { authenticated: true, user } : { authenticated: false });
+      } catch {
+        return response({ error: 'SESSION_UNAVAILABLE' }, 503);
+      }
     },
     async POST(req: NextRequest) {
       if (req.headers.get('origin') !== origin)
@@ -62,11 +81,20 @@ export function sessionHandlers(
         }
         const token = randomBytes(32).toString('hex');
         await db.query(
-          "INSERT INTO sessions(token_hash,app_id,claims,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '8 hours')",
+          "INSERT INTO sessions(token_hash,app_id,claims,expires_at) VALUES($1,$2,$3,LEAST(NOW()+INTERVAL '8 hours',to_timestamp($4)))",
           [
             hash(token),
             appId,
-            { sub: claims.sub, wallet: claims.wallet, ageAbove18: true, environment: 'test' },
+            {
+              sub: claims.sub,
+              wallet: claims.wallet,
+              studentEnrolled: true,
+              credentialPolicy: claims.credentialPolicy,
+              registryRoot: claims.registryRoot,
+              accessUntil: claims.accessUntil,
+              environment: 'test',
+            },
+            claims.accessUntil,
           ],
         );
         await db.query('COMMIT');
