@@ -61,7 +61,12 @@ export class StudentAuthClient {
     email: string;
     wallet: string;
     secretCommitment: string;
-  }): Promise<{ id: string; message: string; expiresAt: string; emailMode: 'local-test' }> {
+  }): Promise<{
+    id: string;
+    message: string;
+    expiresAt: string;
+    emailMode: 'local-test' | 'smtp';
+  }> {
     const { roll, expiry, email, wallet, secretCommitment } = details;
     return this.send('enrollment/request', {
       appId: this.appId,
@@ -81,6 +86,9 @@ export class StudentAuthClient {
   }
   registry(): Promise<{ root: string; leaves: string[] }> {
     return this.send('registry');
+  }
+  config(): Promise<{ emailMode: 'local-test' | 'smtp' | 'disabled'; emailConfigured: boolean }> {
+    return this.send('config');
   }
   challenge(wallet: string): Promise<StudentChallenge> {
     return this.send('challenges', { appId: this.appId, wallet });
