@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.local
+**/.env.local
+.next/
+dist/
+artifacts/
+cache/
+coverage/
+.local/
+*.tsbuildinfo
+deployments/*.json
+!deployments/.gitkeep
+apps/*/public/zk/
