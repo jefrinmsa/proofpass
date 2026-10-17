@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type pg from 'pg';
 import { NextRequest } from 'next/server';
 import { PgStore } from '../apps/api/src/store';
@@ -48,7 +48,10 @@ describe('PostgreSQL persistence via embedded PostgreSQL engine', () => {
       const claims = {
         sub: 'scoped-user',
         wallet: fields.wallet,
-        ageAbove18: true as const,
+        studentEnrolled: true as const,
+        credentialPolicy: 'active-enrollment-unexpired-card-email-wallet-v1',
+        registryRoot: '123',
+        accessUntil: Math.floor(Date.now() / 1000) + 28000,
         environment: 'test' as const,
         jti: 'one-time-assertion',
         exp: Math.floor(Date.now() / 1000) + 300,
@@ -58,6 +61,10 @@ describe('PostgreSQL persistence via embedded PostgreSQL engine', () => {
         pool: adapter,
         verify: async () => claims,
       });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response(JSON.stringify({ root: '123' }))),
+      );
       const request = () =>
         new NextRequest('http://localhost:3000/api/session', {
           method: 'POST',
@@ -111,6 +118,7 @@ describe('PostgreSQL persistence via embedded PostgreSQL engine', () => {
         ).authenticated,
       ).toBe(false);
     } finally {
+      vi.unstubAllGlobals();
       await db.close();
     }
   });
