@@ -60,6 +60,7 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   console.log('Test wallet connected');
   await page.getByRole('button', { name: '1. Sign login challenge' }).click();
   console.log('Challenge requested');
+  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
   await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/adult.png');
   await page.getByRole('button', { name: 'Generate private proof' }).click();
   await expect(page.getByRole('status')).toContainText(/Proof generated|PROOF_GENERATION_FAILED/, {
@@ -76,6 +77,7 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
   await page.getByRole('button', { name: 'Connect browser wallet' }).click();
   await page.getByRole('button', { name: '1. Sign login challenge' }).click();
+  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
   await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/adult.txt');
   await page.getByRole('button', { name: 'Generate private proof' }).click();
   await expect(page.getByRole('status')).toContainText('Proof generated', { timeout: 180000 });
@@ -85,6 +87,7 @@ test('two applications perform real browser proofs and keep sessions isolated', 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByText('Access granted to Campus Library')).toHaveCount(0);
   await page.getByRole('button', { name: '1. Sign login challenge' }).click();
+  await expect(page.getByLabel('Synthetic QR credential')).toBeEnabled();
   await page.getByLabel('Synthetic QR credential').setInputFiles('fixtures/underage.png');
   await page.getByRole('button', { name: 'Generate private proof' }).click();
   await expect(page.getByRole('status')).toContainText(/Proof generated|PROOF_GENERATION_FAILED/, {
