@@ -34,6 +34,7 @@ export function StudentAuthButton({
     id: string;
     message: string;
     credential: StudentCredential;
+    emailMode: 'local-test' | 'smtp';
   }>();
   const [challenge, setChallenge] = useState<StudentChallenge>();
   const [signature, setSignature] = useState<string>();
@@ -43,6 +44,24 @@ export function StudentAuthButton({
   const generation = useRef(0);
   const worker = useRef<Worker>();
   const [provingSeconds, setProvingSeconds] = useState<number>();
+  const [mail, setMail] = useState<{
+    emailMode: 'local-test' | 'smtp' | 'disabled';
+    emailConfigured: boolean;
+  }>();
+  useEffect(() => {
+    let active = true;
+    void new StudentAuthClient(apiUrl, appId)
+      .config()
+      .then((c) => {
+        if (active) setMail(c);
+      })
+      .catch(() => {
+        if (active) setMail({ emailMode: 'disabled', emailConfigured: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, [apiUrl, appId]);
   useEffect(() => {
     generation.current++;
     worker.current?.terminate();
@@ -63,7 +82,14 @@ export function StudentAuthButton({
     try {
       await fn();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'REQUEST_FAILED');
+      const message = e instanceof Error ? e.message : 'REQUEST_FAILED';
+      setStatus(
+        message === 'EMAIL_DELIVERY_FAILED'
+          ? 'EMAIL_DELIVERY_FAILED: the code could not be sent. Ask the administrator to check the SMTP sender, then try again.'
+          : message === 'EMAIL_RATE_LIMITED'
+            ? 'EMAIL_RATE_LIMITED: too many code requests for this address. Wait 15 minutes before trying again.'
+            : message,
+      );
     } finally {
       setBusy(false);
     }
@@ -109,6 +135,8 @@ export function StudentAuthButton({
   }
   async function enroll() {
     await task(async () => {
+      setPending(undefined);
+      setCode('');
       if (!address || chainId !== 31337)
         throw new Error('WRONG_NETWORK: choose ProofPass Local (31337)');
       const expiry = Math.floor(Date.parse(date + 'T23:59:59Z') / 1000);
@@ -141,7 +169,9 @@ export function StudentAuthButton({
       setChallenge(undefined);
       setProof(undefined);
       setStatus(
-        `LOCAL TEST MAILBOX — no email sent. Request ${response.id}. Run: npm run student:mail -- ${response.id}`,
+        response.emailMode === 'smtp'
+          ? 'Code submitted to your registered email. Check Inbox and Spam.'
+          : `LOCAL TEST MAILBOX — no email sent. Request ${response.id}. Run: npm run student:mail -- ${response.id}`,
       );
     });
   }
@@ -254,7 +284,9 @@ export function StudentAuthButton({
           <a href="/student-card.png" download>
             Download sample ID photo
           </a>{' '}
-          · Test email: student1@students.example.test
+          {mail?.emailMode === 'local-test'
+            ? '· Test email: student1@students.example.test'
+            : '· Use the email address registered for this sample student.'}
         </p>
         <label>
           Roll number
@@ -270,18 +302,32 @@ export function StudentAuthButton({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="student1@students.example.test"
+            placeholder="Your registered email address"
           />
         </label>
         <p className="small-note">
           These three fields go to the college enrollment service. The ID image stays on your
           device.
         </p>
-        <button onClick={enroll} disabled={!roll || !date || !email}>
+        <p className="small-note">
+          {!mail
+            ? 'Checking email delivery…'
+            : mail.emailMode === 'smtp'
+              ? mail.emailConfigured
+                ? 'Email codes are delivered to your registered inbox through SMTP.'
+                : 'Email setup is incomplete. The administrator must configure the SMTP sender before requesting codes.'
+              : 'Local test mailbox: no real email will be sent.'}
+        </p>
+        <button onClick={enroll} disabled={!roll || !date || !email || !mail?.emailConfigured}>
           Request verification code
         </button>
         {pending && (
           <>
+            <p className="small-note">
+              {pending.emailMode === 'smtp'
+                ? 'Check your registered email inbox and Spam folder. The code expires in 10 minutes.'
+                : `Local test code: run npm run student:mail -- ${pending.id}`}
+            </p>
             <label>
               Email verification code
               <input
