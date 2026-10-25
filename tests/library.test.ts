@@ -85,6 +85,23 @@ it('protects catalog and file bytes with an active Campus Library session', asyn
     );
     expect(slides.headers.get('content-disposition')).toContain('attachment');
     expect(slides.headers.get('content-type')).toContain('presentationml');
+    const cloudHandler = libraryHandlers({
+      db: adapter,
+      storage: {
+        info: async () => ({ size: 123 }),
+        sign: async (_bucket, name) =>
+          'https://project.supabase.co/storage/v1/object/sign/proofpass-materials/' +
+          encodeURIComponent(name) +
+          '?token=test',
+      },
+    });
+    const redirect = await cloudHandler.file(request('/api/library/cn-notes', cookie), 'cn-notes');
+    expect(redirect.status).toBe(303);
+    expect(redirect.headers.get('location')).toContain('object/sign/proofpass-materials/');
+    expect(redirect.headers.get('cache-control')).toContain('no-store');
+    expect((await cloudHandler.file(request('/api/library/cn-notes'), 'cn-notes')).status).toBe(
+      401,
+    );
     expect((await handler.file(request('/api/library/unknown', cookie), '../../.env')).status).toBe(
       404,
     );
