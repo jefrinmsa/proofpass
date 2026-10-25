@@ -64,6 +64,20 @@ export function studentSignal(message: string) {
 export const studentAbi = [
   {
     type: 'function',
+    name: 'owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'verifier',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
     name: 'registryRoot',
     stateMutability: 'view',
     inputs: [],
