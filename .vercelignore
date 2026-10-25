@@ -1,0 +1,12 @@
+.local
+**/.local
+.env
+**/.env.local
+.git
+node_modules
+**/.next
+artifacts
+cache
+deployments/*.json
+**/public/ocr
+**/public/zk
