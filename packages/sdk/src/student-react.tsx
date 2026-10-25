@@ -17,11 +17,13 @@ export function StudentAuthButton({
   appId,
   onAuthenticated,
   onProof,
+  expectedChainId = 31337,
 }: {
   apiUrl: string;
   appId: string;
   onAuthenticated: (assertion: string) => Promise<void>;
   onProof?: (p: StudentProof, c: StudentChallenge) => void;
+  expectedChainId?: number;
 }) {
   const { address, chainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -137,8 +139,10 @@ export function StudentAuthButton({
     await task(async () => {
       setPending(undefined);
       setCode('');
-      if (!address || chainId !== 31337)
-        throw new Error('WRONG_NETWORK: choose ProofPass Local (31337)');
+      if (!address || chainId !== expectedChainId)
+        throw new Error(
+          `WRONG_NETWORK: choose ${expectedChainId === 11155111 ? 'Sepolia' : 'ProofPass Local'} (${expectedChainId})`,
+        );
       const expiry = Math.floor(Date.parse(date + 'T23:59:59Z') / 1000);
       const secret = (
         BigInt(
