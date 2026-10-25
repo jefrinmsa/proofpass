@@ -12,6 +12,9 @@
     "noEmit": true,
     "paths": {
       "@zk-auth/shared": ["./packages/shared/src/index.ts"],
+      "@zk-auth/shared/server": ["./packages/shared/src/server.ts"],
+      "@zk-auth/shared/registry": ["./packages/shared/src/registry.ts"],
+      "@zk-auth/shared/storage": ["./packages/shared/src/storage.ts"],
       "@zk-auth/sdk": ["./packages/sdk/src/index.ts"],
       "@zk-auth/sdk/react": ["./packages/sdk/src/react.tsx"],
       "@zk-auth/sdk/server": ["./packages/sdk/src/server.ts"]
