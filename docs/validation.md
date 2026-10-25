@@ -13,7 +13,7 @@ Validated on Windows with Node 24.16.0, Circom 2.2 (circom2 0.2.23), circomlib 2
 
 ## Coverage
 
-The **27 passing unit/integration tests** include aggregate cases for:
+The original 27 unit/integration tests include aggregate cases for:
 
 - Active roster matching; unknown, expired and inactive enrollment; mismatched email/expiry; unauthorized origins; disabled delivery configuration.
 - Issuance code mismatch, five-attempt lockout, expiry, single-use consumption and wallet mismatch. No email is sent in these tests.
@@ -34,7 +34,7 @@ Service tests inject the verifier to isolate policy; they use real wallet signat
 
 ## Limits
 
-Synthetic records and a private filesystem mailbox are used in automated browser tests. Real SMTP delivery is supported with an administrator-configured sender and recipient stored only in local configuration/database. Real college identity is not established. The updater uses an unlocked local Hardhat account; the student issuer refuses real networks.
+Synthetic records and a private filesystem mailbox are used in automated browser tests. Real SMTP delivery is supported with an administrator-configured sender and recipient stored only in private configuration/database. Real college identity is not established. Local updates use an explicitly enabled unlocked Hardhat account; hosted updates require a dedicated Sepolia owner key. Mainnet is disallowed.
 
 The custom circuit and single-machine educational ceremony are unaudited. The proving key passed snarkjs zkey verify against the circuit and ceremony. Source, generated verifier and public artifact hashes are committed. Keys, witnesses, private credentials, codes, database contents and supplied course documents are ignored. Regenerating the setup requires redeploying the matching verifier.
 
@@ -43,3 +43,11 @@ PostgreSQL and blockchain updates cannot be atomic together. Root mismatch denie
 Sepolia student deployment has not been performed. SMTP tests use an injected transport; live delivery depends on valid sender credentials and provider acceptance. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
 
 Both Next.js production builds passed. They report the existing upstream optional web-worker dynamic-dependency warning; the complete production browser walkthrough passed despite that warning.
+
+## Cloud deployment preparation
+
+The final deployment regression run passed **33 unit/integration tests**, **15 contract tests**, TypeScript checking, both Next.js production builds, a build with hosted settings and the complete API build command. The browser bundle contained the expected public API URL and did not contain the test private-storage secret marker. The administrator enrollment/revocation commands also synchronized successfully against the isolated local database and registry.
+
+The deployment changes add persistent OTP hashing, bounded TLS database pools, exact hosted URL/network validation, Supabase table access restrictions, pinned build assets and 60-second signed private download redirects. The regression browser walkthrough against an isolated local database passed in 42.6 seconds (1.3 minutes including runner startup), covering OCR, both real browser proofs, separate subjects/sessions, protected materials, an optional transaction and revocation. This is a local measurement, not a cloud performance claim.
+
+Cloud resources and Sepolia deployment remain unverified until provider authorization and the private cloud settings are available. No stable public URLs or cloud transaction measurements have been recorded. Follow cloud-deployment.md for the external-device acceptance checklist.
