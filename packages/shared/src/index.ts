@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { keccak256, stringToHex, type Address } from 'viem';
 export * from './student';
+export * from './browser';
+export * from './materials';
 
 export const EDUCATIONAL_NOTICE = 'Test credentials — educational demonstration';
 export const AGE_POLICY = 'Completed age greater than 18 (19+), at the QR signing date';
