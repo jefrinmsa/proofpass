@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "contracts:compile": "hardhat compile",
-    "contracts:test": "hardhat test",
+    "contracts:test": "npm run student:validate && hardhat test",
     "chain": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.cjs --network sepolia",
@@ -41,7 +41,14 @@
     "student:validate": "tsx scripts/validate-student.ts",
     "student:activate": "tsx scripts/student-admin.ts activate",
     "student:email": "tsx scripts/student-admin.ts email",
-    "student:mail:check": "tsx scripts/check-mail.ts"
+    "student:mail:check": "tsx scripts/check-mail.ts",
+    "student:deploy:sepolia": "hardhat run scripts/deploy-student.cjs --network sepolia",
+    "student:sync": "tsx scripts/student-admin.ts sync",
+    "assets:upload": "tsx scripts/upload-cloud-assets.ts",
+    "build:vercel:lab": "node scripts/build-vercel.cjs demo-a",
+    "build:vercel:library": "node scripts/build-vercel.cjs demo-b",
+    "build:vercel:api": "node scripts/build-vercel.cjs api",
+    "cloud": "tsx scripts/cloud.ts"
   },
   "dependencies": {
     "@anon-aadhaar/contracts": "2.4.3",
@@ -49,6 +56,7 @@
     "@fastify/cors": "10.0.2",
     "@fastify/rate-limit": "10.2.1",
     "@tanstack/react-query": "5.66.9",
+    "@vercel/functions": "3.10.3",
     "circomlibjs": "0.1.7",
     "dotenv": "16.4.7",
     "fastify": "5.2.1",
