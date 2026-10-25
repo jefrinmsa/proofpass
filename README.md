@@ -1,5 +1,7 @@
 # ProofPass: private student access
 
+For hosting the complete demo independently of your computer, follow [the Vercel, Supabase and Sepolia deployment guide](docs/cloud-deployment.md).
+
 College demonstration using ID-photo OCR, a registered-email verification step, wallet signatures, real Groth16 enrollment proofs, and a local blockchain verifier. Only enrolled students with a valid credential can open the protected Campus Library materials. **The active application has no age requirement.** The original Aadhaar demo is retained as legacy source; its assertions and sessions cannot unlock student resources.
 
 **Test credentials — educational demonstration.** The roster is synthetic. Email delivery supports Gmail/other SMTP servers or an explicit local test mailbox. The local mailbox does not prove real email ownership. Real enrollment imports, production issuer custody, an audited circuit and an independent trusted setup are not implemented.
@@ -49,7 +51,7 @@ Start the blockchain in another terminal (keep this terminal running):
 
     npm.cmd run chain
 
-Prepare both verifier deployments. The API still hosts legacy endpoints for compatibility, so its old test verifier must also exist. The large Aadhaar proving artifacts are unnecessary for student login.
+The commands below retain both local verifier deployments for compatibility. Student-only hosting does not require the legacy verifier; set `ENABLE_LEGACY_AADHAAR=false`. The large Aadhaar proving artifacts are unnecessary for student login.
 
     npm.cmd run deploy:local
     npm.cmd run configure:local -- --embedded
@@ -77,7 +79,7 @@ Run each server in its own terminal:
 
 Open Student Lab at http://localhost:3000 and Campus Library at http://localhost:3001. Production builds use npm.cmd run build; start each app with npm.cmd run start -w @zk-auth/demo-a (or demo-b).
 
-Configure MetaMask's local test network: RPC http://127.0.0.1:8545, chain ID 31337, symbol ETH. Normal login needs no transaction fee. The optional transaction uses local test ETH; never send real funds to development accounts. The issuer uses an unlocked Hardhat account and refuses to start as a real-network student issuer.
+Configure MetaMask's local test network: RPC http://127.0.0.1:8545, chain ID 31337, symbol ETH. Normal login needs no transaction fee. The optional transaction uses local test ETH; never send real funds to development accounts. Local issuance uses an explicitly enabled unlocked Hardhat account. Hosted issuance requires Sepolia, a dedicated registry-owner signing key and the cloud configuration in the deployment guide.
 
 ## Try the sample student
 
