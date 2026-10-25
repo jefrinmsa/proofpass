@@ -21,11 +21,23 @@ import {
   studentProofArgs,
   type StudentProof,
   type StudentChallenge,
+  browserSettings,
 } from '@zk-auth/shared';
+const settings = browserSettings({
+  NEXT_PUBLIC_DEPLOYMENT_ENV: process.env.NEXT_PUBLIC_DEPLOYMENT_ENV,
+  NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID,
+  NEXT_PUBLIC_AUTH_API: process.env.NEXT_PUBLIC_AUTH_API,
+  NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL,
+  NEXT_PUBLIC_STUDENT_LAB_URL: process.env.NEXT_PUBLIC_STUDENT_LAB_URL,
+  NEXT_PUBLIC_LIBRARY_URL: process.env.NEXT_PUBLIC_LIBRARY_URL,
+});
 const config = createConfig({
   chains: [hardhat, sepolia],
   connectors: [injected()],
-  transports: { [hardhat.id]: http('http://127.0.0.1:8545'), [sepolia.id]: http() },
+  transports: {
+    [hardhat.id]: http(settings.chainId === 31337 ? settings.rpcUrl : undefined),
+    [sepolia.id]: http(settings.chainId === 11155111 ? settings.rpcUrl : undefined),
+  },
 });
 const queryClient = new QueryClient();
 export function Demo({ appId, title, accent }: { appId: string; title: string; accent: string }) {
@@ -95,10 +107,10 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
           ProofPass
         </a>
         <nav aria-label="Applications">
-          <a href="http://localhost:3000" aria-current={appId === 'demo-a' ? 'page' : undefined}>
+          <a href={settings.studentLabUrl} aria-current={appId === 'demo-a' ? 'page' : undefined}>
             Student Lab
           </a>
-          <a href="http://localhost:3001" aria-current={appId === 'demo-b' ? 'page' : undefined}>
+          <a href={settings.libraryUrl} aria-current={appId === 'demo-b' ? 'page' : undefined}>
             Campus Library
           </a>
         </nav>
@@ -170,7 +182,8 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
               <StudentAuthButton
                 key={`${address}:${chainId}`}
                 appId={appId}
-                apiUrl={process.env.NEXT_PUBLIC_AUTH_API ?? 'http://localhost:4000'}
+                apiUrl={settings.apiUrl}
+                expectedChainId={settings.chainId}
                 onAuthenticated={authenticated}
                 onProof={(p, c) => setProof({ p, c })}
               />
@@ -261,7 +274,7 @@ function Content({ appId, title, accent }: { appId: string; title: string; accen
             </details>
             <a
               className="text-link"
-              href={appId === 'demo-a' ? 'http://localhost:3001' : 'http://localhost:3000'}
+              href={appId === 'demo-a' ? settings.libraryUrl : settings.studentLabUrl}
             >
               Try {appId === 'demo-a' ? 'Campus Library' : 'Student Lab'}{' '}
               <span aria-hidden="true">↗</span>
