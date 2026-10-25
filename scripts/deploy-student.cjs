@@ -1,6 +1,12 @@
 const hre = require('hardhat');
 const fs = require('node:fs/promises');
 async function main() {
+  const chainId = Number((await hre.ethers.provider.getNetwork()).chainId);
+  if (
+    ![31337, 11155111].includes(chainId) ||
+    (hre.network.name === 'sepolia' && chainId !== 11155111)
+  )
+    throw new Error('Student demo deployment requires the expected test network');
   const groth = await (await hre.ethers.getContractFactory('StudentGroth16Verifier')).deploy();
   await groth.waitForDeployment();
   const auth = await (
