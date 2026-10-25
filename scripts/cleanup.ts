@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import pg from 'pg';
-const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+import { createDbPool } from '@zk-auth/shared/server';
+const db = createDbPool();
 try {
   for (const table of [
     'challenges',
