@@ -35,13 +35,18 @@ export interface StudentDependencies {
   signAssertion(claims: Record<string, unknown>): Promise<string>;
   mailDirectory?: string;
   mailer?: StudentMailer;
+  otpHashSecret?: string;
   now?: () => number;
 }
 export function studentService(d: StudentDependencies) {
   const now = d.now ?? Date.now;
   const store = new PgStore(d.db);
   const mailer = d.mailer ?? (d.mailDirectory ? localTestMailer(d.mailDirectory) : undefined);
-  const pepper = randomBytes(32);
+  if (d.otpHashSecret && !/^[a-fA-F0-9]{64}$/.test(d.otpHashSecret))
+    throw new Error(
+      'OTP_HASH_SECRET must contain 32 random bytes encoded as 64 hexadecimal characters',
+    );
+  const pepper = d.otpHashSecret ? Buffer.from(d.otpHashSecret, 'hex') : randomBytes(32);
   const codeHash = (id: string, code: string) =>
     createHmac('sha256', pepper).update(`${id}:${code}`).digest('hex');
   async function registry(db: Pick<pg.Pool, 'query'> = d.db) {
@@ -327,4 +332,5 @@ export function registerStudentRoutes(server: FastifyInstance, d: StudentDepende
       .parse(r.body);
     return s.verify(b.challengeId, origin(r), b.signature as `0x${string}`, b.proof);
   });
+  return s;
 }
