@@ -2,7 +2,8 @@ import { randomBytes, createHash } from 'node:crypto';
 import pg from 'pg';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAssertionVerifier } from '@zk-auth/sdk/server';
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+import { createDbPool, authIssuer, exactOrigin } from '@zk-auth/shared/server';
+const pool = createDbPool();
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
 export async function readSession(req: NextRequest, appId: string, db: pg.Pool = pool) {
   const token = req.cookies.get(`zk_${appId.replaceAll('-', '_')}`)?.value;
@@ -20,10 +21,10 @@ export async function readSession(req: NextRequest, appId: string, db: pg.Pool =
     claims.accessUntil <= Date.now() / 1000
   )
     return undefined;
-  const registry = await fetch(
-    `${process.env.AUTH_ISSUER ?? 'http://localhost:4000'}/v1/student/registry`,
-    { cache: 'no-store', signal: AbortSignal.timeout(10000) },
-  );
+  const registry = await fetch(`${authIssuer()}/v1/student/registry`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10000),
+  });
   if (!registry.ok) throw new Error('REGISTRY_UNAVAILABLE');
   if ((await registry.json()).root !== claims.registryRoot) return undefined;
   return claims as { sub: string; wallet: string };
@@ -35,7 +36,8 @@ export function sessionHandlers(
 ) {
   const sessionPool = dependencies?.pool ?? pool;
   const cookie = `zk_${appId.replaceAll('-', '_')}`;
-  const issuer = process.env.AUTH_ISSUER ?? 'http://localhost:4000';
+  const issuer = authIssuer();
+  exactOrigin(origin);
   const verify =
     dependencies?.verify ??
     createAssertionVerifier({
