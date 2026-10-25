@@ -45,6 +45,7 @@ it('authorizes student issuance and rejects enrollment, email, wallet, replay an
       return JSON.stringify(claims);
     },
     mailDirectory: directory,
+    otpHashSecret: 'ab'.repeat(32),
   };
   const service = studentService(deps);
   const origin = 'http://localhost:3001';
@@ -105,7 +106,8 @@ it('authorizes student issuance and rejects enrollment, email, wallet, replay an
         origin,
       ),
     ).rejects.toThrow('WALLET_MISMATCH');
-    await service.issue(pending.id, mail.code, sig, origin);
+    // A fresh API instance can consume the same pending code using the hosted secret.
+    await studentService(deps).issue(pending.id, mail.code, sig, origin);
     await expect(service.issue(pending.id, mail.code, sig, origin)).rejects.toThrow(
       'EMAIL_CODE_EXPIRED_OR_LOCKED',
     );
