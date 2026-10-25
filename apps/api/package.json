@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit -p ../../tsconfig.json"
+    "build": "tsc --noEmit -p ../../tsconfig.json",
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
     "@zk-auth/shared": "0.1.0"
