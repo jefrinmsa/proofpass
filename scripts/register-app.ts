@@ -1,10 +1,13 @@
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
-import pg from 'pg';
+import { createDbPool, exactOrigin, isCloud } from '@zk-auth/shared/server';
 const [id, ...origins] = process.argv.slice(2);
 if (!id || !/^[a-z0-9-]{1,64}$/.test(id) || !origins.length)
   throw new Error('Usage: npm run app:register -- demo-a http://localhost:3000');
 for (const origin of origins) {
+  exactOrigin(origin);
+  if (isCloud() && !origin.startsWith('https://'))
+    throw new Error('Hosted applications require HTTPS origins');
   const u = new URL(origin);
   if (
     u.origin !== origin ||
@@ -13,7 +16,7 @@ for (const origin of origins) {
   )
     throw new Error('Use exact HTTPS origins or localhost HTTP origins');
 }
-const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = createDbPool();
 try {
   const seed = BigInt('0x' + randomBytes(16).toString('hex')).toString();
   // Origin updates deliberately retain the seed so existing account identifiers remain stable.
