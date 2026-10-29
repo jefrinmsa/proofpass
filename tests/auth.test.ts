@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createService } from '../apps/api/src/service';
-import { buildServer } from '../apps/api/src/server';
+import { buildServer } from '../apps/api/src/app-factory';
 import type { Store, Application } from '../apps/api/src/store';
 import {
   proofSchema,
