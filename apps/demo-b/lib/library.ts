@@ -18,7 +18,7 @@ export function libraryHandlers(options?: {
   db?: pg.Pool;
   storage?: {
     info(bucket: string, name: string): Promise<{ size: number }>;
-    sign(bucket: string, name: string, download: boolean): Promise<string>;
+    sign(bucket: string, name: string, download: boolean, downloadName?: string): Promise<string>;
   };
 }) {
   const directory = options?.directory ?? path.resolve(process.cwd(), '.local/library');
@@ -37,7 +37,7 @@ export function libraryHandlers(options?: {
         const catalog = await Promise.all(
           materials.map(async (material) => {
             const file = storage
-              ? await storage.info(bucket, material.file)
+              ? await storage.info(bucket, material.storageKey)
               : await stat(path.join(directory, material.file));
             return {
               id: material.id,
@@ -63,7 +63,7 @@ export function libraryHandlers(options?: {
         const download =
           material.format !== 'PDF' || req.nextUrl.searchParams.get('download') === '1';
         if (storage) {
-          const signed = await storage.sign(bucket, material.file, download);
+          const signed = await storage.sign(bucket, material.storageKey, download, material.file);
           return new NextResponse(null, { status: 303, headers: { ...headers, Location: signed } });
         }
         const data = await readFile(path.join(directory, material.file));
