@@ -10,10 +10,10 @@ import {
   secretValue,
 } from '@zk-auth/shared/server';
 import { createRegistryClient } from '@zk-auth/shared/registry';
-import { buildServer } from './server';
-import { PgStore } from './store';
-import { createStudentMailer } from './mail';
-import type { Dependencies } from './service';
+import { buildServer } from './server.js';
+import { PgStore } from './store.js';
+import { createStudentMailer } from './mail.js';
+import type { Dependencies } from './service.js';
 
 const cloud = isCloud();
 if (cloud && process.env.EMAIL_DELIVERY !== 'smtp')
