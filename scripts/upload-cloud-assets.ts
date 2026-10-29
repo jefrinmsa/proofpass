@@ -46,7 +46,7 @@ for (const entry of manifest) {
         : 'application/octet-stream';
   await storage.request(`object/${artifactBucket}/${release}/${encode(entry.path)}`, {
     method: 'POST',
-    headers: { 'Content-Type': type, 'cache-control': '31536000', 'x-upsert': 'true' },
+    headers: { 'Content-Type': type, 'cache-control': 'max-age=31536000', 'x-upsert': 'true' },
     body: new Uint8Array(bytes),
   });
 }
@@ -54,9 +54,9 @@ for (const material of materialCatalog) {
   const bytes = await readFile(
     path.join(repositoryRoot, 'apps/demo-b/.local/library', material.file),
   );
-  await storage.request(`object/${materialBucket}/${encode(material.file)}`, {
+  await storage.request(`object/${materialBucket}/${encode(material.storageKey)}`, {
     method: 'POST',
-    headers: { 'Content-Type': material.type, 'cache-control': '0', 'x-upsert': 'true' },
+    headers: { 'Content-Type': material.type, 'cache-control': 'max-age=0', 'x-upsert': 'true' },
     body: new Uint8Array(bytes),
   });
 }
