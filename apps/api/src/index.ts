@@ -100,10 +100,14 @@ const server = await buildServer(
   },
   Fastify({ logger: false, bodyLimit: 16384 }),
 );
-await server.listen({
+const listening = server.listen({
   port: Number(process.env.PORT ?? 4000),
   host: process.env.HOST ?? (cloud ? '0.0.0.0' : '127.0.0.1'),
 });
+// Vercel imports the module before activating its intercepted HTTP listener.
+// Awaiting listen during that import prevents the framework adapter from starting.
+if (!process.env.VERCEL) await listening;
+else void listening.catch(() => console.error('API_LISTEN_FAILED'));
 console.log('ProofPass API ready (educational test credentials only)');
 if (!process.env.VERCEL)
   for (const event of ['SIGINT', 'SIGTERM'])
