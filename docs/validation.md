@@ -40,7 +40,7 @@ The custom circuit and single-machine educational ceremony are unaudited. The pr
 
 PostgreSQL and blockchain updates cannot be atomic together. Root mismatch denies access and requires administrator resynchronization. Registry changes invalidate all old-root sessions. Cards must remain valid for the full eight-hour access window. Already downloaded files cannot be revoked.
 
-Sepolia student deployment has not been performed. SMTP tests use an injected transport; live delivery depends on valid sender credentials and provider acceptance. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
+Sepolia student contracts were deployed on 29 October 2026. The deployed Groth16 verifier accepted an existing real synthetic proof and rejected a tampered proof; its runtime bytecode matches the existing compiled verifier. The registry contains the empty enrollment tree. See sepolia-deployment.md for addresses, transaction links and measured deployment gas. SMTP tests use an injected transport; live delivery depends on valid sender credentials and provider acceptance. Historical Aadhaar measurements and instructions are archived in legacy-aadhaar.md; they are not the current access policy.
 
 Both Next.js production builds passed. They report the existing upstream optional web-worker dynamic-dependency warning; the complete production browser walkthrough passed despite that warning.
 
@@ -50,4 +50,4 @@ The final deployment regression run passed **33 unit/integration tests**, **15 c
 
 The deployment changes add persistent OTP hashing, bounded TLS database pools, exact hosted URL/network validation, Supabase table access restrictions, pinned build assets and 60-second signed private download redirects. The regression browser walkthrough against an isolated local database passed in 42.6 seconds (1.3 minutes including runner startup), covering OCR, both real browser proofs, separate subjects/sessions, protected materials, an optional transaction and revocation. This is a local measurement, not a cloud performance claim.
 
-Cloud resources and Sepolia deployment remain unverified until provider authorization and the private cloud settings are available. No stable public URLs or cloud transaction measurements have been recorded. Follow cloud-deployment.md for the external-device acceptance checklist.
+Sepolia contract deployment and direct proof verification have passed. Supabase resources, stable public application URLs and the complete cloud login flow remain unverified until provider authorization and the remaining private cloud settings are available. Follow cloud-deployment.md for the external-device acceptance checklist.
