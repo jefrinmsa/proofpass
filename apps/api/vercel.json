@@ -2,6 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "fastify",
   "buildCommand": "node ../../scripts/build-vercel.cjs api",
-  "installCommand": "npm ci --include=dev",
-  "functions": { "src/index.ts": { "maxDuration": 300 } }
+  "installCommand": "npm ci --include=dev"
 }
