@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { verifyMessage, type Hex, type Address } from 'viem';
 import { challengeMessage, signalFor, type AuthProof, type Challenge } from '@zk-auth/shared';
-import type { Store } from './store';
+import type { Store } from './store.js';
 export class AuthError extends Error {
   constructor(
     public code: string,
