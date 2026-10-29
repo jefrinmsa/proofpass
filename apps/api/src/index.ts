@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import Fastify from 'fastify';
 import { exportJWK, importPKCS8, importSPKI, SignJWT } from 'jose';
 import { createPublicClient, getAddress, http } from 'viem';
 import { authAbi, proofArgs } from '@zk-auth/shared';
@@ -97,6 +98,7 @@ const server = await buildServer(
     verifyProof: registry.verifyProof,
     signAssertion,
   },
+  Fastify({ logger: false, bodyLimit: 16384 }),
 );
 await server.listen({
   port: Number(process.env.PORT ?? 4000),
@@ -108,4 +110,4 @@ if (!process.env.VERCEL)
     process.on(event, () => {
       void server.close().then(() => pool.end());
     });
-export default server;
+export default server.server;
