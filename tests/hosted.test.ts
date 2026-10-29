@@ -138,6 +138,14 @@ it('signs only expected private storage paths for sixty seconds and rejects fore
     SUPABASE_SERVICE_ROLE_KEY: 'server-only-test-key',
   });
   const link = await client.sign('proofpass-materials', 'book.pdf', true);
+  const originalName = 'SOFTWARE PROJECT MANAGEMENT AND PROCESS MODELS [Autosaved].pptx';
+  const slides = await client.sign(
+    'proofpass-materials',
+    'project-management.pptx',
+    true,
+    originalName,
+  );
+  expect(new URL(slides).searchParams.get('download')).toBe(originalName);
   expect(new URL(link).origin).toBe('https://project.supabase.co');
   expect(new URL(link).searchParams.get('download')).toBe('book.pdf');
   expect(JSON.parse(calls[0].init.body as string)).toEqual({ expiresIn: 60 });
