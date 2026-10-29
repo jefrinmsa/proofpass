@@ -28,7 +28,7 @@ export function storageClient(env: Environment = process.env) {
       if (!Number.isSafeInteger(size) || size < 0) throw new Error('STORAGE_UNAVAILABLE');
       return { size };
     },
-    async sign(bucket: string, name: string, download: boolean) {
+    async sign(bucket: string, name: string, download: boolean, downloadName = name) {
       const response = await request(`object/sign/${encoded(bucket)}/${encoded(name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,7 +46,7 @@ export function storageClient(env: Environment = process.env) {
         !url.pathname.startsWith(`/storage/v1/object/sign/${encoded(bucket)}/`)
       )
         throw new Error('STORAGE_UNAVAILABLE');
-      if (download) url.searchParams.set('download', name);
+      if (download) url.searchParams.set('download', downloadName);
       return url.toString();
     },
   };
