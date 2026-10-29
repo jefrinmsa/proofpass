@@ -42,8 +42,13 @@ async function save() {
 }
 function requireCore() {
   for (const key of core) requiredEnv(key, env);
+  requireBlockchain();
+}
+function requireBlockchain() {
+  for (const key of ['RPC_URL', 'REGISTRY_OWNER_PRIVATE_KEY']) requiredEnv(key, env);
   if (env.CHAIN_ID !== '11155111' || env.DEPLOYMENT_ENV !== 'cloud')
     throw new Error('Cloud deployment must explicitly select Sepolia');
+  if (!env.RPC_URL.startsWith('https://')) throw new Error('Sepolia RPC must use HTTPS');
 }
 function run(script: string, args: string[] = [], extra: Record<string, string> = {}) {
   const result = spawnSync(process.execPath, [script, ...args], {
@@ -84,7 +89,8 @@ if (action === 'init') {
   }
   if (missing) process.exitCode = 1;
 } else if (action === 'deploy-contracts') {
-  requireCore();
+  // Contract deployment is independent of database and storage provisioning.
+  requireBlockchain();
   if (env.STUDENT_VERIFIER_ADDRESS)
     throw new Error('A verifier is already configured; refusing to replace its proving identity');
   const client = createPublicClient({
