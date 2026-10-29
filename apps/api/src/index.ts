@@ -10,7 +10,7 @@ import {
   secretValue,
 } from '@zk-auth/shared/server';
 import { createRegistryClient } from '@zk-auth/shared/registry';
-import { buildServer } from './server.js';
+import { buildServer } from './app-factory.js';
 import { PgStore } from './store.js';
 import { createStudentMailer } from './mail.js';
 import type { Dependencies } from './service.js';
