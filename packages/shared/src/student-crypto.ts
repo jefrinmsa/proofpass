@@ -1,6 +1,6 @@
 import { buildPoseidon } from 'circomlibjs';
 import { keccak256, stringToHex } from 'viem';
-import { FIELD } from './student';
+import { FIELD } from './student.js';
 let ready: ReturnType<typeof buildPoseidon> | undefined;
 export async function studentCrypto() {
   const poseidon = await (ready ??= buildPoseidon());
