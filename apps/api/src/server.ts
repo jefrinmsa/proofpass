@@ -3,8 +3,8 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { z, ZodError } from 'zod';
 import { address, proofSchema } from '@zk-auth/shared';
-import { AuthError, createService, type Dependencies } from './service';
-import { registerStudentRoutes, type StudentDependencies } from './student';
+import { AuthError, createService, type Dependencies } from './service.js';
+import { registerStudentRoutes, type StudentDependencies } from './student.js';
 export async function buildServer(
   d: Dependencies | undefined,
   jwks: object,
