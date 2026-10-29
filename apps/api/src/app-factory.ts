@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { z, ZodError } from 'zod';
@@ -9,8 +9,9 @@ export async function buildServer(
   d: Dependencies | undefined,
   jwks: object,
   student?: StudentDependencies,
+  instance?: FastifyInstance,
 ) {
-  const server = Fastify({ logger: false, bodyLimit: 16384 });
+  const server = instance ?? Fastify({ logger: false, bodyLimit: 16384 });
   await server.register(cors, {
     origin: student
       ? async (origin: string | undefined) => {
