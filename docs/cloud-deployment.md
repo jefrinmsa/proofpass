@@ -40,7 +40,7 @@ Import the GitHub repository three times. Choose standalone projects in the impo
 | Student Lab        | `apps/demo-a` | Next.js   | `node ../../scripts/build-vercel.cjs demo-a` |
 | Authentication API | `apps/api`    | Fastify   | `node ../../scripts/build-vercel.cjs api`    |
 
-Use Node 22 or 24, installation command `npm ci --include=dev`, default framework output directories, and enable **Include source files outside of the Root Directory in the Build Step**. The checked-in `vercel.json` files supply the commands. Fastify uses `src/index.ts` as its Node entrypoint; SMTP sends and registry receipts are awaited before responding. See [Fastify on Vercel](https://vercel.com/docs/frameworks/backend/fastify) and [monorepo shared sources](https://vercel.com/docs/monorepos/monorepo-faq).
+Use Node 24, installation command `cd ../.. && npm ci --include=dev --workspaces --include-workspace-root`, default framework output directories, and enable **Include source files outside of the Root Directory in the Build Step**. The explicit repository-root installation includes shared build tools as well as the selected application's dependencies. The checked-in `vercel.json` files supply the commands. Fastify uses `src/index.ts` as its Node entrypoint; SMTP sends and registry receipts are awaited before responding. Its framework adapter manages the serverless function, so do not add a `functions.src/index.ts` pattern. See [Fastify on Vercel](https://vercel.com/docs/frameworks/backend/fastify) and [monorepo shared sources](https://vercel.com/docs/monorepos/monorepo-faq).
 
 Record stable production origins in the private cloud file:
 
