@@ -13,16 +13,16 @@ export async function buildServer(
   const server = Fastify({ logger: false, bodyLimit: 16384 });
   await server.register(cors, {
     origin: student
-      ? async (origin, callback) => {
-          if (!origin) return callback(null, false);
+      ? async (origin: string | undefined) => {
+          if (!origin) return false;
           try {
             const allowed = await student.db.query(
               'SELECT 1 FROM applications WHERE origins @> $1::jsonb LIMIT 1',
               [JSON.stringify([origin])],
             );
-            callback(null, Boolean(allowed.rowCount));
+            return Boolean(allowed.rowCount);
           } catch {
-            callback(null, false);
+            return false;
           }
         }
       : true,
