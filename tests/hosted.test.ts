@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import type pg from 'pg';
-import { buildServer } from '../apps/api/src/server';
+import { buildServer } from '../apps/api/src/app-factory';
 afterEach(() => vi.unstubAllGlobals());
 it('allows CORS only for registered exact origins and denies it during database failures', async () => {
   let offline = false;
@@ -35,11 +35,12 @@ it('allows CORS only for registered exact origins and denies it during database 
     },
   );
   try {
+    expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
     const request = (origin: string) =>
       app.inject({ method: 'GET', url: '/health', headers: { origin } });
-    expect(
-      (await request('https://library.example.com')).headers['access-control-allow-origin'],
-    ).toBe('https://library.example.com');
+    const allowed = await request('https://library.example.com');
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.headers['access-control-allow-origin']).toBe('https://library.example.com');
     expect(
       (await request('https://unregistered-preview.vercel.app')).headers[
         'access-control-allow-origin'
