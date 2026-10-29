@@ -17,6 +17,9 @@ async function main() {
     chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
     verifier: await auth.getAddress(),
     groth16: await groth.getAddress(),
+    owner: await auth.owner(),
+    verifierTransaction: groth.deploymentTransaction().hash,
+    registryTransaction: auth.deploymentTransaction().hash,
   };
   await fs.mkdir('deployments', { recursive: true });
   await fs.writeFile(`deployments/student-${hre.network.name}.json`, JSON.stringify(data, null, 2));
