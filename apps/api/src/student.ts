@@ -20,10 +20,10 @@ import {
   type StudentChallenge,
   type StudentProof,
 } from '@zk-auth/shared';
-import { studentCrypto } from '../../../packages/shared/src/student-crypto';
-import { PgStore } from './store';
-import { AuthError } from './service';
-import { localTestMailer, type StudentMailer } from './mail';
+import { studentCrypto } from '../../../packages/shared/src/student-crypto.js';
+import { PgStore } from './store.js';
+import { AuthError } from './service.js';
+import { localTestMailer, type StudentMailer } from './mail.js';
 
 export interface StudentDependencies {
   db: pg.Pool;
