@@ -11,6 +11,7 @@ import {
 } from '@zk-auth/shared';
 import { studentCrypto } from '../../shared/src/student-crypto';
 import { StudentAuthClient } from './index';
+import { readStudentCard } from './student-ocr';
 
 export function StudentAuthButton({
   apiUrl,
@@ -42,6 +43,8 @@ export function StudentAuthButton({
   const [signature, setSignature] = useState<string>();
   const [proof, setProof] = useState<StudentProof>();
   const [busy, setBusy] = useState(false);
+  const [readingPhoto, setReadingPhoto] = useState(false);
+  const photoRead = useRef<AbortController>();
   const [status, setStatus] = useState('Connect your wallet, then read your student ID photo.');
   const generation = useRef(0);
   const worker = useRef<Worker>();
@@ -76,6 +79,7 @@ export function StudentAuthButton({
     return () => {
       generation.current++;
       worker.current?.terminate();
+      photoRead.current?.abort();
     };
   }, [address, chainId]);
   const client = new StudentAuthClient(apiUrl, appId);
@@ -98,44 +102,60 @@ export function StudentAuthButton({
   }
   async function readPhoto(file?: File) {
     if (!file) return;
-    await task(async () => {
+    photoRead.current?.abort();
+    const controller = new AbortController();
+    photoRead.current = controller;
+    setReadingPhoto(true);
+    try {
       if (file.size > 5000000 || !file.type.startsWith('image/'))
         throw new Error('Choose an ID image smaller than 5 MB.');
       setStatus('Reading the image locally. No photo is uploaded.');
-      const { createWorker } = await import('tesseract.js');
-      const ocr = await createWorker('eng', 1, {
-        workerPath: '/ocr/worker.min.js',
-        corePath: '/ocr',
-        langPath: '/ocr',
-        gzip: true,
-        cacheMethod: 'none',
-      });
+      const image = await createImageBitmap(file);
       try {
-        const image = await createImageBitmap(file);
-        try {
-          if (image.width * image.height > 16000000) throw new Error('Image is too large');
-        } finally {
-          image.close();
-        }
-        const { data } = await ocr.recognize(file);
-        const r = data.text.match(/(?:ROLL\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*)([A-Z0-9-]{3,40})/i);
-        const expiry = data.text.match(
-          /(?:EXPIRY|EXPIRES|VALID\s*(?:UNTIL|TILL))\s*[:\-]?\s*(\d{4}-\d{2}-\d{2}|\d{2}[\/-]\d{2}[\/-]\d{4})/i,
-        );
-        if (r) setRoll(r[1].toUpperCase());
-        if (expiry) {
-          const value = expiry[1];
-          setDate(/^\d{4}/.test(value) ? value : value.split(/[\/-]/).reverse().join('-'));
-        }
-        setStatus(
-          'Review the extracted roll number and expiry. Correct any OCR mistakes before requesting a code.',
-        );
+        if (image.width * image.height > 16000000) throw new Error('Image is too large');
       } finally {
-        await ocr.terminate();
+        image.close();
       }
-    });
+      if (controller.signal.aborted) return;
+      const text = await readStudentCard(file, controller.signal);
+      if (controller.signal.aborted || photoRead.current !== controller) return;
+      const r = text.match(/(?:ROLL\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*)([A-Z0-9-]{3,40})/i);
+      const expiry = text.match(
+        /(?:EXPIRY|EXPIRES|VALID\s*(?:UNTIL|TILL))\s*[:\-]?\s*(\d{4}-\d{2}-\d{2}|\d{2}[\/-]\d{2}[\/-]\d{4})/i,
+      );
+      if (r) setRoll(r[1].toUpperCase());
+      if (expiry) {
+        const value = expiry[1];
+        setDate(/^\d{4}/.test(value) ? value : value.split(/[\/-]/).reverse().join('-'));
+      }
+      setStatus(
+        r && expiry
+          ? 'Review the extracted roll number and expiry. Correct any OCR mistakes before requesting a code.'
+          : 'Some card details could not be read. Enter or correct the roll number and expiry below.',
+      );
+    } catch (e) {
+      if (!controller.signal.aborted && photoRead.current === controller)
+        setStatus(
+          e instanceof Error && e.message === 'OCR_TIMEOUT'
+            ? 'Image reading timed out. Enter the details manually below, or choose the photo again.'
+            : 'Could not read this image. Enter the details manually below, or try a clearer photo.',
+        );
+    } finally {
+      if (photoRead.current === controller) {
+        photoRead.current = undefined;
+        setReadingPhoto(false);
+      }
+    }
+  }
+  function enterManually() {
+    const controller = photoRead.current;
+    photoRead.current = undefined;
+    controller?.abort();
+    setReadingPhoto(false);
+    if (controller) setStatus('Image reading stopped. Enter your card details manually below.');
   }
   async function enroll() {
+    enterManually();
     await task(async () => {
       setPending(undefined);
       setCode('');
@@ -191,6 +211,7 @@ export function StudentAuthButton({
     });
   }
   async function generate() {
+    enterManually();
     await task(async () => {
       if (!credential || !address)
         throw new Error('Verify enrollment or load your private credential first.');
@@ -280,6 +301,11 @@ export function StudentAuthButton({
             onChange={(e) => void readPhoto(e.target.files?.[0])}
           />
         </label>
+        {readingPhoto && (
+          <button type="button" className="quiet" onClick={enterManually}>
+            Stop reading and enter manually
+          </button>
+        )}
         <p className="small-note">
           OCR runs on your device. Review the fields below. You can enter them manually if the photo
           is unclear.
@@ -294,18 +320,35 @@ export function StudentAuthButton({
         </p>
         <label>
           Roll number
-          <input value={roll} onChange={(e) => setRoll(e.target.value)} placeholder="CSE2026001" />
+          <input
+            value={roll}
+            onChange={(e) => {
+              enterManually();
+              setRoll(e.target.value);
+            }}
+            placeholder="CSE2026001"
+          />
         </label>
         <label>
           Card expiry date
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => {
+              enterManually();
+              setDate(e.target.value);
+            }}
+          />
         </label>
         <label>
           Registered college email
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              enterManually();
+              setEmail(e.target.value);
+            }}
             placeholder="Your registered email address"
           />
         </label>
@@ -361,6 +404,7 @@ export function StudentAuthButton({
             accept="application/json,.json"
             onChange={(e) =>
               void task(async () => {
+                enterManually();
                 const f = e.target.files?.[0];
                 if (!f || f.size > 8192) throw new Error('Choose a small credential JSON');
                 const c = studentCredentialSchema.parse(JSON.parse(await f.text()));
