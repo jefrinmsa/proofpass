@@ -78,6 +78,12 @@ export async function buildServer(
     if (error instanceof ZodError || error.statusCode === 400)
       return reply.code(400).send({ error: { code: 'INVALID_REQUEST' } });
     if (error.statusCode === 429) return reply.code(429).send({ error: { code: 'RATE_LIMITED' } });
+    const code =
+      typeof error.code === 'string' && /^[A-Z0-9_]+$/.test(error.code)
+        ? error.code
+        : 'INTERNAL_ERROR';
+    // Log a diagnostic category only: upstream messages can contain private URLs or payloads.
+    console.error('ProofPass verification unavailable', { code });
     return reply.code(503).send({ error: { code: 'VERIFICATION_UNAVAILABLE' } });
   });
   return server;
